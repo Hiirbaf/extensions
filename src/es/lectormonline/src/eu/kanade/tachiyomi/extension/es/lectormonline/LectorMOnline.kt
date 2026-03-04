@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 class LectorMOnline :
     LectorMOnline(
         name = "Lector MOnline",
-        baseUrl = "https://mangolibreria.com",
+        baseUrl = "https://www.mangolibreria.com",
         lang = "es",
     ) {
     override val client = network.cloudflareClient.newBuilder()
