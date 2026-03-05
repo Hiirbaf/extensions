@@ -9,9 +9,9 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
-import org.json.JSONObject
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONObject
 
 open class LectorMOnline(
     override val name: String,
@@ -30,11 +30,9 @@ open class LectorMOnline(
     override fun popularMangaParse(response: Response): MangasPage =
         searchMangaParse(response)
 
-    override fun latestUpdatesRequest(page: Int): Request =
-        GET("$baseUrl/api/comics?page=$page", headers)
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page", headers)
 
-    override fun latestUpdatesParse(response: Response): MangasPage =
-        searchMangaParse(response)
+    override fun latestUpdatesParse(response: Response): MangasPage = searchMangaParse(response)
 
     override fun searchMangaRequest(
         page: Int,
@@ -83,11 +81,9 @@ open class LectorMOnline(
          * DETAILS
          * ============================ */
 
-    override fun getMangaUrl(manga: SManga): String =
-        "$baseUrl/comics/${manga.url}"
+    override fun getMangaUrl(manga: SManga): String = "$baseUrl/comics/${manga.url}"
 
-    override fun mangaDetailsRequest(manga: SManga): Request =
-        GET("$baseUrl/api/comics/${manga.url}", headers)
+    override fun mangaDetailsRequest(manga: SManga): Request = GET("$baseUrl/api/comics/${manga.url}", headers)
 
     override fun mangaDetailsParse(response: Response): SManga {
         val obj = response.parseAs<ComicDto>()
@@ -111,8 +107,7 @@ open class LectorMOnline(
          * CHAPTERS
          * ============================ */
 
-    override fun chapterListRequest(manga: SManga): Request =
-        mangaDetailsRequest(manga)
+    override fun chapterListRequest(manga: SManga): Request = mangaDetailsRequest(manga)
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val obj = response.parseAs<ComicDto>()
