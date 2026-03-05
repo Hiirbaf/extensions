@@ -12,7 +12,7 @@ import java.util.TimeZone
  * DATE FORMAT
  * ============================ */
 
-val dateFormat = SimpleDateFormat(
+private val dateFormat = SimpleDateFormat(
     "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
     Locale.ROOT,
 ).apply {
@@ -20,7 +20,7 @@ val dateFormat = SimpleDateFormat(
 }
 
 /* ============================
- * COMIC DETAILS
+ * COMIC
  * ============================ */
 
 @Serializable
@@ -37,29 +37,24 @@ class ComicDto(
 
     fun toSManga() = SManga.create().apply {
         url = slug
-        this.title = this@ComicDto.title
+        title = this@ComicDto.title
         thumbnail_url = coverImage
-        status = status.parseStatus()
+        status = parseStatus(this@ComicDto.status)
     }
 
     fun toSMangaDetails() = SManga.create().apply {
         url = slug
-        this.title = this@ComicDto.title
+        title = this@ComicDto.title
         thumbnail_url = coverImage
         description = this@ComicDto.description
-        status = status.parseStatus()
+        status = parseStatus(this@ComicDto.status)
         genre = comicGenres.joinToString(", ") { it.genre.name }
     }
 
     fun getChapters(): List<SChapter> = comicScans
         .flatMap { it.chapters }
         .map { it.toSChapter() }
-        .sortedByDescending { it.chapterNumber }
-
-    private fun String?.parseStatus(): Int = when (this?.lowercase()) {
-        "ongoing" -> SManga.ONGOING
-        "completed" -> SManga.COMPLETED
-        else -> SManga.UNKNOWN
+        .sortedByDescending { chapter -> chapter.chapter_number }
     }
 }
 
@@ -107,5 +102,17 @@ class ChapterDto(
         name = "Capítulo $chapterNumber"
         chapter_number = chapterNumber
         date_upload = tryParse(dateFormat, releaseDate) ?: 0L
+    }
+}
+
+/* ============================
+ * STATUS PARSER
+ * ============================ */
+
+private fun parseStatus(status: String?): Int {
+    return when (status?.lowercase()) {
+        "ongoing" -> SManga.ONGOING
+        "completed" -> SManga.COMPLETED
+        else -> SManga.UNKNOWN
     }
 }
