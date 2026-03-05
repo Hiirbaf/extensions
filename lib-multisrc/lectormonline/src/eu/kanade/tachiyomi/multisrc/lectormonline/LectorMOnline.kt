@@ -9,6 +9,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
+import org.json.JSONObject
 import okhttp3.Request
 import okhttp3.Response
 
@@ -20,9 +21,9 @@ open class LectorMOnline(
 
     override val supportsLatest = true
 
-    /* ============================
-     * POPULAR / LATEST / SEARCH
-     * ============================ */
+        /* ============================
+         * POPULAR / LATEST / SEARCH
+         * ============================ */
 
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page&sort=views", headers)
 
@@ -63,7 +64,7 @@ open class LectorMOnline(
 
             val manga = SManga.create().apply {
                 title = mangaObj.getString("title")
-                setUrlWithoutDomain("/comics/" + mangaObj.getString("slug"))
+                setUrlWithoutDomain(mangaObj.getString("slug"))
                 thumbnail_url = mangaObj.optString("coverImage")
             }
 
@@ -78,9 +79,9 @@ open class LectorMOnline(
         return MangasPage(mangas, hasNextPage)
     }
 
-    /* ============================
-     * DETAILS
-     * ============================ */
+        /* ============================
+         * DETAILS
+         * ============================ */
 
     override fun getMangaUrl(manga: SManga): String =
         "$baseUrl/comics/${manga.url}"
@@ -106,9 +107,9 @@ open class LectorMOnline(
         }
     }
 
-    /* ============================
-     * CHAPTERS
-     * ============================ */
+        /* ============================
+         * CHAPTERS
+         * ============================ */
 
     override fun chapterListRequest(manga: SManga): Request =
         mangaDetailsRequest(manga)
@@ -131,9 +132,9 @@ open class LectorMOnline(
         return chapters.sortedByDescending { it.chapter_number }
     }
 
-    /* ============================
-     * PAGES
-     * ============================ */
+        /* ============================
+         * PAGES
+         * ============================ */
 
     override fun pageListRequest(chapter: SChapter): Request {
         // reutilizamos el endpoint del manga completo
@@ -157,9 +158,9 @@ open class LectorMOnline(
         return emptyList()
     }
 
-    /* ============================
-     * FILTERS (solo orden)
-     * ============================ */
+        /* ============================
+         * FILTERS (solo orden)
+         * ============================ */
 
     override fun getFilterList(): FilterList {
         return FilterList(
