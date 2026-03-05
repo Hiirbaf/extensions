@@ -37,47 +37,43 @@ open class LectorMOnline(
     override fun latestUpdatesParse(response: Response): MangasPage =
         searchMangaParse(response)
 
-    override fun searchMangaRequest(
-        page: Int,
-        query: String,
-        filters: FilterList
-    ): Request {
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegment("api")
-            .addPathSegment("comics")
-            .addQueryParameter("page", page.toString())
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+    val genreFilter = filters.filterIsInstance<GenreFilter>().firstOrNull()
+    val genre = genreFilter?.toUriPart()
 
-        if (query.isNotBlank()) {
-            url.addQueryParameter("search", query)
-        }
-
-        filters.forEach { filter ->
-            when (filter) {
-                is SortByFilter -> {
-                    url.addQueryParameter("sort", filter.selected)
-                    url.addQueryParameter(
-                        "isDesc",
-                        filter.state!!.ascending.not().toString()
-                    )
-                }
-            }
-        }
-
-        return GET(url.build(), headers)
+    val url = when {
+        !genre.isNullOrBlank() -> "$baseUrl/api/comics?page=$page&genres=$genre"
+        else -> "$baseUrl/api/comics?page=$page"
     }
 
-    override fun searchMangaParse(response: Response): MangasPage {
-        val dto = response.parseAs<ComicListDto>()
+    return GET(url, headers)
+}
 
-        val mangas = dto.comics.map { comic ->
-            SManga.create().apply {
-                title = comic.title
-                thumbnail_url = comic.coverImage
-                url = comic.id.toString() // usamos ID numérico
+    override fun searchMangaParse(response: Response): MangasPage {
+        val json = response.body!!.string()
+        val obj = JSONObject(json)
+
+        val data = obj.getJSONArray("data")
+        val mangas = mutableListOf<SManga>()
+
+        for (i in 0 until data.length()) {
+            val mangaObj = data.getJSONObject(i)
+
+            val manga = SManga.create().apply {
+                title = mangaObj.getString("title")
+                setUrlWithoutDomain("/comics/" + mangaObj.getString("slug"))
+                thumbnail_url = mangaObj.optString("coverImage")
             }
+
+            mangas.add(manga)
         }
 
-        return MangasPage(mangas, dto.hasNextPage())
+        val pagination = obj.getJSONObject("pagination")
+        val currentPage = pagination.getInt("page")
+        val totalPages = pagination.getInt("totalPages")
+        val hasNextPage = currentPage < totalPages
+
+        return MangasPage(mangas, hasNextPage)
     }
 
     /* ============================
