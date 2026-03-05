@@ -52,9 +52,9 @@ class ComicDto(
     }
 
     fun getChapters(): List<SChapter> = comicScans
-            .flatMap { it.chapters }
-            .map { it.toSChapter() }
-            .sortedByDescending { it.chapterNumber }
+        .flatMap { it.chapters }
+        .map { it.toSChapter() }
+        .sortedByDescending { it.chapterNumber }
 
     private fun String?.parseStatus(): Int = when (this?.lowercase()) {
         "ongoing" -> SManga.ONGOING
