@@ -49,7 +49,7 @@ class GenreFilter :
             "Manhwa" to "Manhwa",
             "Manhua" to "Manhua",
             "Webtoon" to "Webtoon",
-       )
+        ),
     )
 
 open class UriPartFilter(
