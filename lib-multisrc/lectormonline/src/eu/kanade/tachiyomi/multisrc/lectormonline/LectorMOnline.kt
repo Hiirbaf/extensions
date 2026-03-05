@@ -27,8 +27,7 @@ open class LectorMOnline(
 
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page&sort=views", headers)
 
-    override fun popularMangaParse(response: Response): MangasPage =
-        searchMangaParse(response)
+    override fun popularMangaParse(response: Response): MangasPage = searchMangaParse(response)
 
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page", headers)
 
@@ -157,8 +156,7 @@ open class LectorMOnline(
          * FILTERS (solo orden)
          * ============================ */
 
-    override fun getFilterList(): FilterList {
-        return FilterList(
+    override fun getFilterList(): FilterList = FilterList(
             Filter.Header("Ordenar resultados"),
             SortByFilter(
                 "Ordenar por",
@@ -169,8 +167,6 @@ open class LectorMOnline(
                 0,
             ),
         )
-    }
 
-    override fun imageUrlParse(response: Response): String =
-        throw UnsupportedOperationException()
+    override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 }
