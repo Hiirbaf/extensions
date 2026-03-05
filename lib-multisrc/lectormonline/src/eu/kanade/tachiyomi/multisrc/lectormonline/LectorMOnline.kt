@@ -8,13 +8,10 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import eu.kanade.tachiyomi.util.asJsoup
 import keiyoushi.utils.parseAs
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
-import org.jsoup.nodes.Document
-import kotlin.concurrent.thread
 
 open class LectorMOnline(
     override val name: String,
@@ -24,39 +21,45 @@ open class LectorMOnline(
 
     override val supportsLatest = true
 
-    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/comics?sort=views&page=$page", headers)
+    /* ============================
+     * POPULAR / LATEST / SEARCH
+     * ============================ */
 
-    override fun popularMangaParse(response: Response): MangasPage = searchMangaParse(response)
+    override fun popularMangaRequest(page: Int): Request =
+        GET("$baseUrl/api/comics?page=$page&sort=views", headers)
 
-    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/comics?page=$page", headers)
+    override fun popularMangaParse(response: Response): MangasPage =
+        searchMangaParse(response)
 
-    override fun latestUpdatesParse(response: Response): MangasPage = searchMangaParse(response)
+    override fun latestUpdatesRequest(page: Int): Request =
+        GET("$baseUrl/api/comics?page=$page", headers)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+    override fun latestUpdatesParse(response: Response): MangasPage =
+        searchMangaParse(response)
+
+    override fun searchMangaRequest(
+        page: Int,
+        query: String,
+        filters: FilterList
+    ): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegment("api")
             .addPathSegment("comics")
-            .addQueryParameter("q", query)
             .addQueryParameter("page", page.toString())
+
+        if (query.isNotBlank()) {
+            url.addQueryParameter("search", query)
+        }
 
         filters.forEach { filter ->
             when (filter) {
                 is SortByFilter -> {
-                    if (filter.selected == "views") {
-                        url.addQueryParameter("sort", "views")
-                    }
-                    if (filter.state!!.ascending) {
-                        url.addQueryParameter("isDesc", "false")
-                    }
+                    url.addQueryParameter("sort", filter.selected)
+                    url.addQueryParameter(
+                        "isDesc",
+                        filter.state!!.ascending.not().toString()
+                    )
                 }
-
-                is GenreFilter -> {
-                    val selectedGenre = filter.toUriPart()
-                    if (selectedGenre.isNotEmpty()) {
-                        return GET("$baseUrl/genres/$selectedGenre?page=$page", headers)
-                    }
-                }
-
-                else -> { }
             }
         }
 
@@ -64,120 +67,116 @@ open class LectorMOnline(
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val document = response.asJsoup()
-        if (response.request.url.pathSegments[0] == "genres") {
-            return searchMangaGenreParse(document)
-        }
-        val script = document.select("script:containsData(self.__next_f.push)").joinToString { it.data() }
-        val jsonData = COMICS_LIST_REGEX.find(script)?.groupValues?.get(1)?.unescape()
-            ?: throw Exception("No se pudo encontrar la lista de cómics")
-        val data = jsonData.parseAs<ComicListDataDto>()
-        return MangasPage(data.comics.map { it.toSManga() }, data.hasNextPage())
-    }
+        val dto = response.parseAs<ComicListDto>()
 
-    private fun searchMangaGenreParse(document: Document): MangasPage {
-        val mangas = document.select("div.grid.relative > a.group.relative").map { element ->
+        val mangas = dto.comics.map { comic ->
             SManga.create().apply {
-                setUrlWithoutDomain(element.attr("href").substringAfter("/comics/").substringBefore("?"))
-                title = element.selectFirst("h3")!!.text()
-                thumbnail_url = element.selectFirst("img")?.attr("abs:src")
+                title = comic.title
+                thumbnail_url = comic.coverImage
+                url = comic.id.toString() // usamos ID numérico
             }
         }
-        val hasNextPage = document.selectFirst("div.flex.items-center > a:has(> svg):last-child:not(.pointer-events-none)") != null
-        return MangasPage(mangas, hasNextPage)
+
+        return MangasPage(mangas, dto.hasNextPage())
     }
 
-    override fun getMangaUrl(manga: SManga) = "$baseUrl/comics/${manga.url}"
+    /* ============================
+     * DETAILS
+     * ============================ */
 
-    override fun mangaDetailsRequest(manga: SManga): Request = GET("$baseUrl/api/app/comic/${manga.url}", headers)
+    override fun getMangaUrl(manga: SManga): String =
+        "$baseUrl/comics/${manga.url}"
 
-    override fun mangaDetailsParse(response: Response): SManga = response.parseAs<ComicDto>().toSMangaDetails()
+    override fun mangaDetailsRequest(manga: SManga): Request =
+        GET("$baseUrl/api/comics/${manga.url}", headers)
 
-    override fun getChapterUrl(chapter: SChapter): String {
-        val mangaSlug = chapter.url.substringBefore("/")
-        val chapterNumber = chapter.url.substringAfter("/")
-        return "$baseUrl/comics/$mangaSlug/chapters/$chapterNumber"
+    override fun mangaDetailsParse(response: Response): SManga {
+        val obj = response.parseAs<ComicDto>()
+
+        return SManga.create().apply {
+            title = obj.title
+            description = obj.description
+            thumbnail_url = obj.coverImage
+
+            status = when (obj.status) {
+                "ongoing" -> SManga.ONGOING
+                "completed" -> SManga.COMPLETED
+                else -> SManga.UNKNOWN
+            }
+
+            genre = obj.comicGenres.joinToString(", ") { it.name }
+        }
     }
 
-    override fun chapterListRequest(manga: SManga) = mangaDetailsRequest(manga)
+    /* ============================
+     * CHAPTERS
+     * ============================ */
 
-    override fun chapterListParse(response: Response): List<SChapter> = response.parseAs<ComicDto>().getChapters()
+    override fun chapterListRequest(manga: SManga): Request =
+        mangaDetailsRequest(manga)
+
+    override fun chapterListParse(response: Response): List<SChapter> {
+        val obj = response.parseAs<ComicDto>()
+        val chapters = mutableListOf<SChapter>()
+
+        obj.comicScans.forEach { scan ->
+            scan.chapters.forEach { ch ->
+                chapters += SChapter.create().apply {
+                    url = ch.id.toString() // solo ID
+                    name = "Capítulo ${ch.chapterNumber}"
+                    chapter_number = ch.chapterNumber.toFloat()
+                    date_upload = parseDate(ch.releaseDate)
+                }
+            }
+        }
+
+        return chapters.sortedByDescending { it.chapter_number }
+    }
+
+    /* ============================
+     * PAGES
+     * ============================ */
 
     override fun pageListRequest(chapter: SChapter): Request {
-        val mangaSlug = chapter.url.substringBefore("/")
-        val chapterNumber = chapter.url.substringAfter("/")
-        return GET("$baseUrl/api/app/comic/$mangaSlug/chapter/$chapterNumber", headers)
+        // reutilizamos el endpoint del manga completo
+        return GET("$baseUrl/api/comics/${chapter.mangaUrl}", headers)
     }
 
     override fun pageListParse(response: Response): List<Page> {
-        val data = response.parseAs<ChapterPagesDataDto>()
-        return data.chapter.urlImagesChapter.mapIndexed { index, image ->
-            Page(index, imageUrl = image)
-        }
-    }
+        val chapterId = response.request.url.pathSegments.last().toInt()
+        val obj = response.parseAs<ComicDto>()
 
-    private var genresList: List<Pair<String, String>> = emptyList()
-    private var fetchFiltersAttempts = 0
-    private var filtersState = FiltersState.NOT_FETCHED
-
-    private fun fetchFilters() {
-        if (filtersState != FiltersState.NOT_FETCHED || fetchFiltersAttempts >= 3) return
-        filtersState = FiltersState.FETCHING
-        fetchFiltersAttempts++
-        thread {
-            try {
-                val response = client.newCall(GET("$baseUrl/api/app/genres", headers)).execute()
-                val filters = response.parseAs<GenreListDto>()
-
-                genresList = filters.genres.map { genre -> genre.name.lowercase().replaceFirstChar { it.uppercase() } to genre.name }
-
-                filtersState = FiltersState.FETCHED
-            } catch (_: Throwable) {
-                filtersState = FiltersState.NOT_FETCHED
+        obj.comicScans.forEach { scan ->
+            scan.chapters.forEach { ch ->
+                if (ch.id == chapterId) {
+                    return ch.urlPages.mapIndexed { index, image ->
+                        Page(index, imageUrl = image)
+                    }
+                }
             }
         }
+
+        return emptyList()
     }
 
-    override fun getFilterList(): FilterList {
-        fetchFilters()
+    /* ============================
+     * FILTERS (solo orden)
+     * ============================ */
 
-        val filters = mutableListOf<Filter<*>>(
-            Filter.Header("El filtro por género no funciona con los demas filtros"),
-            Filter.Separator(),
+    override fun getFilterList(): FilterList {
+        return FilterList(
+            Filter.Header("Ordenar resultados"),
             SortByFilter(
                 "Ordenar por",
                 listOf(
                     SortProperty("Más vistos", "views"),
                     SortProperty("Más recientes", "created_at"),
                 ),
-                1,
+                0,
             ),
         )
-
-        filters += if (filtersState == FiltersState.FETCHED) {
-            listOf(
-                Filter.Separator(),
-                Filter.Header("Filtrar por género"),
-                GenreFilter(genresList),
-            )
-        } else {
-            listOf(
-                Filter.Separator(),
-                Filter.Header("Presione 'Reiniciar' para intentar cargar los filtros"),
-            )
-        }
-
-        return FilterList(filters)
     }
 
-    private enum class FiltersState { NOT_FETCHED, FETCHING, FETCHED }
-
-    override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
-
-    private fun String.unescape(): String = UNESCAPE_REGEX.replace(this, "$1")
-
-    companion object {
-        private val UNESCAPE_REGEX = """\\(.)""".toRegex()
-        private val COMICS_LIST_REGEX = """\\"comicsData\\":(\{.*?\}),\\"searchParams""".toRegex()
-    }
+    override fun imageUrlParse(response: Response): String =
+        throw UnsupportedOperationException()
 }
