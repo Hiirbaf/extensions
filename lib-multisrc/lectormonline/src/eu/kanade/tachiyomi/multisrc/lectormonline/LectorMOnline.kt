@@ -48,9 +48,8 @@ open class LectorMOnline(
             else -> "$baseUrl/api/comics?page=$page"
         }
 
-    return GET(url, headers)
+        return GET(url, headers)
     }
-}
 
     override fun searchMangaParse(response: Response): MangasPage {
         val json = response.body!!.string()
