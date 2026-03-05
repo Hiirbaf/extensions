@@ -23,33 +23,34 @@ class SortProperty(val name: String, val value: String) {
  * Aquí enviamos exactamente el mismo texto
  * que la API acepta (con mayúsculas).
  */
-class GenreFilter : UriPartFilter(
-    "Género",
-    arrayOf(
-        "Todos" to "",
-        "Nuevo" to "Nuevo",
-        "Acción" to "Acción",
-        "Fantasía" to "Fantasía",
-        "Sistema" to "Sistema",
-        "Murim" to "Murim",
-        "Romance" to "Romance",
-        "Comedia" to "Comedia",
-        "Drama" to "Drama",
-        "Isekai" to "Isekai",
-        "Reencarnación" to "Reencarnación",
-        "Regresion" to "Regresion",
-        "Retornado" to "Retornado",
-        "Demonios" to "Demonios",
-        "Harem" to "Harem",
-        "Ecchi" to "Ecchi",
-        "Seinen " to "Seinen ",
-        "Shounen " to "Shounen ",
-        "Shoujo" to "Shoujo",
-        "Manhwa" to "Manhwa",
-        "Manhua" to "Manhua",
-        "Webtoon" to "Webtoon",
+class GenreFilter :
+    UriPartFilter(
+        "Género",
+        arrayOf(
+            "Todos" to "",
+            "Nuevo" to "Nuevo",
+            "Acción" to "Acción",
+            "Fantasía" to "Fantasía",
+            "Sistema" to "Sistema",
+            "Murim" to "Murim",
+            "Romance" to "Romance",
+            "Comedia" to "Comedia",
+            "Drama" to "Drama",
+            "Isekai" to "Isekai",
+            "Reencarnación" to "Reencarnación",
+            "Regresion" to "Regresion",
+            "Retornado" to "Retornado",
+            "Demonios" to "Demonios",
+            "Harem" to "Harem",
+            "Ecchi" to "Ecchi",
+            "Seinen " to "Seinen ",
+            "Shounen " to "Shounen ",
+            "Shoujo" to "Shoujo",
+            "Manhwa" to "Manhwa",
+            "Manhua" to "Manhua",
+            "Webtoon" to "Webtoon",
+       )
     )
-)
 
 open class UriPartFilter(
     displayName: String,
