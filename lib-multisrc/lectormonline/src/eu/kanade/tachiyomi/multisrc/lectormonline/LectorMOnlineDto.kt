@@ -9,16 +9,14 @@ import java.util.Locale
 import java.util.TimeZone
 
 /* ============================
- * LIST RESPONSE
+ * DATE FORMAT
  * ============================ */
 
-@Serializable
-class ComicListDto(
-    val comics: List<ComicDto>,
-    val page: Int,
-    val totalPages: Int,
-) {
-    fun hasNextPage() = page < totalPages
+val dateFormat = SimpleDateFormat(
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    Locale.ROOT,
+).apply {
+    timeZone = TimeZone.getTimeZone("UTC")
 }
 
 /* ============================
@@ -29,33 +27,35 @@ class ComicListDto(
 class ComicDto(
     val id: Int,
     val title: String,
+    val slug: String,
     val description: String? = null,
     val coverImage: String? = null,
     val status: String? = null,
-    val comicGenres: List<GenreDto> = emptyList(),
+    val comicGenres: List<ComicGenreWrapper> = emptyList(),
     val comicScans: List<ScanDto> = emptyList(),
 ) {
 
     fun toSManga() = SManga.create().apply {
-        url = id.toString()
+        url = slug
         this.title = this@ComicDto.title
         thumbnail_url = coverImage
         status = status.parseStatus()
     }
 
     fun toSMangaDetails() = SManga.create().apply {
-        url = id.toString()
+        url = slug
         this.title = this@ComicDto.title
         thumbnail_url = coverImage
         description = this@ComicDto.description
         status = status.parseStatus()
-        genre = comicGenres.joinToString(", ") { it.name }
+        genre = comicGenres.joinToString(", ") { it.genre.name }
     }
 
     fun getChapters(): List<SChapter> {
-        return comicScans.flatMap { scan ->
-            scan.chapters.map { it.toSChapter() }
-        }.sortedByDescending { it.chapter_number }
+        return comicScans
+            .flatMap { it.chapters }
+            .map { it.toSChapter() }
+            .sortedByDescending { it.chapterNumber }
     }
 
     private fun String?.parseStatus(): Int = when (this?.lowercase()) {
@@ -64,6 +64,22 @@ class ComicDto(
         else -> SManga.UNKNOWN
     }
 }
+
+/* ============================
+ * GENRES
+ * ============================ */
+
+@Serializable
+class ComicGenreWrapper(
+    val genre: GenreDto,
+)
+
+@Serializable
+class GenreDto(
+    val id: Int,
+    val name: String,
+    val slug: String,
+)
 
 /* ============================
  * SCANS
@@ -78,19 +94,20 @@ class ScanDto(
  * CHAPTER
  * ============================ */
 
-val dateFormat = SimpleDateFormat(
-    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-    Locale.ROOT
-).apply {
-    timeZone = TimeZone.getTimeZone("UTC")
-}
-
 @Serializable
 class ChapterDto(
     val id: Int,
     val chapterNumber: Float,
+    val title: String? = null,
+    val slug: String,
     val releaseDate: String,
     val urlPages: List<String> = emptyList(),
 ) {
 
-    fun toSChapter() = S
+    fun toSChapter() = SChapter.create().apply {
+        url = slug
+        name = "Capítulo $chapterNumber"
+        chapter_number = chapterNumber
+        date_upload = tryParse(dateFormat, releaseDate) ?: 0L
+    }
+}
