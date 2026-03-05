@@ -51,12 +51,10 @@ class ComicDto(
         genre = comicGenres.joinToString(", ") { it.genre.name }
     }
 
-    fun getChapters(): List<SChapter> {
-        return comicScans
+    fun getChapters(): List<SChapter> = comicScans
             .flatMap { it.chapters }
             .map { it.toSChapter() }
             .sortedByDescending { it.chapterNumber }
-    }
 
     private fun String?.parseStatus(): Int = when (this?.lowercase()) {
         "ongoing" -> SManga.ONGOING
