@@ -157,16 +157,16 @@ open class LectorMOnline(
          * ============================ */
 
     override fun getFilterList(): FilterList = FilterList(
-            Filter.Header("Ordenar resultados"),
-            SortByFilter(
-                "Ordenar por",
-                listOf(
-                    SortProperty("Más vistos", "views"),
-                    SortProperty("Más recientes", "created_at"),
-                ),
-                0,
+        Filter.Header("Ordenar resultados"),
+        SortByFilter(
+            "Ordenar por",
+            listOf(
+                SortProperty("Más vistos", "views"),
+                SortProperty("Más recientes", "created_at"),
             ),
-        )
+            0,
+        ),
+    )
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 }
