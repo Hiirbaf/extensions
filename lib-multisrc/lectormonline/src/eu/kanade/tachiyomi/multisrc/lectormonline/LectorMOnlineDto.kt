@@ -56,7 +56,6 @@ class ComicDto(
         .map { it.toSChapter() }
         .sortedByDescending { chapter -> chapter.chapter_number }
     }
-}
 
 /* ============================
  * GENRES
