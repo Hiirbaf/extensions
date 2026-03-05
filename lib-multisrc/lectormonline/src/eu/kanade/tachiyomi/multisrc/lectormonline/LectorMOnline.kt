@@ -9,7 +9,6 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
 
@@ -25,8 +24,7 @@ open class LectorMOnline(
      * POPULAR / LATEST / SEARCH
      * ============================ */
 
-    override fun popularMangaRequest(page: Int): Request =
-        GET("$baseUrl/api/comics?page=$page&sort=views", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page&sort=views", headers)
 
     override fun popularMangaParse(response: Response): MangasPage =
         searchMangaParse(response)
@@ -37,16 +35,21 @@ open class LectorMOnline(
     override fun latestUpdatesParse(response: Response): MangasPage =
         searchMangaParse(response)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-    val genreFilter = filters.filterIsInstance<GenreFilter>().firstOrNull()
-    val genre = genreFilter?.toUriPart()
+    override fun searchMangaRequest(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): Request {
+        val genreFilter = filters.filterIsInstance<GenreFilter>().firstOrNull()
+        val genre = genreFilter?.toUriPart()
 
-    val url = when {
-        !genre.isNullOrBlank() -> "$baseUrl/api/comics?page=$page&genres=$genre"
-        else -> "$baseUrl/api/comics?page=$page"
-    }
+        val url = when {
+            !genre.isNullOrBlank() -> "$baseUrl/api/comics?page=$page&genres=$genre"
+            else -> "$baseUrl/api/comics?page=$page"
+        }
 
     return GET(url, headers)
+    }
 }
 
     override fun searchMangaParse(response: Response): MangasPage {
