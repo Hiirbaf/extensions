@@ -25,7 +25,7 @@ class ManhwaLatino :
     init {
         launchIO {
             runCatching {
-                client.newCall(popularMangaRequest(1)).execute().close()
+                client.newCall(GET("$baseUrl/manga/", headers)).execute().close()
             }
         }
     }
