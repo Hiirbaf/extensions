@@ -55,13 +55,25 @@ open class LectorMOnline(
         val genreFilter = filters.filterIsInstance<GenreFilter>().firstOrNull()
         val genre = genreFilter?.toUriPart()
 
-        val url = when {
-            !genre.isNullOrBlank() -> "$baseUrl/api/comics?page=$page&genres=$genre"
-            query.isNotBlank() -> "$baseUrl/api/comics?page=$page&search=${query.trim()}"
-            else -> "$baseUrl/api/comics?page=$page"
+        val sortFilter = filters.filterIsInstance<SortByFilter>().firstOrNull()
+        val sort = sortFilter?.selected
+
+        val url = "$baseUrl/api/comics".toHttpUrl().newBuilder()
+            .addQueryParameter("page", page.toString())
+
+        if (!query.isBlank()) {
+          url.addQueryParameter("search", query.trim())
         }
 
-        return GET(url, headers)
+        if (!genre.isNullOrBlank()) {
+            url.addQueryParameter("genres", genre)
+        }
+
+        if (!sort.isNullOrBlank()) {
+            url.addQueryParameter("sort", sort)
+        }
+
+        return GET(url.build(), headers)
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
@@ -111,42 +123,36 @@ open class LectorMOnline(
          * FILTERS
          * ============================ */
 
-    override fun getFilterList(): FilterList = FilterList(
-        SortByFilter(
-            "Ordenar por",
-            listOf(
-                SortProperty("Popularidad", "views"),
-                SortProperty("Recientes", "latest"),
+    private var genresCache: List<String>? = null
+
+    override fun getFilterList(): FilterList {
+        val genres = genresCache ?: run {
+            try {
+                val request = GET("$baseUrl/api/comics?genres=", headers)
+                val response = client.newCall(request).execute()
+
+                val dto = json.decodeFromString<GenreResponseDto>(response.body.string())
+
+                genresCache = dto.genres
+                dto.genres
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
+        return FilterList(
+            Filter.Header("Ordenar resultados"),
+            SortByFilter(
+                "Ordenar por",
+                listOf(
+                    SortProperty("Más vistos", "views"),
+                    SortProperty("Más recientes", "created_at"),
+                ),
+                0,
             ),
-            0,
-        ),
-        GenreFilter(
-            listOf(
-                "Acción" to "Acción",
-                "Action" to "Action",
-                "Adulto" to "Adulto",
-                "Adventure" to "Adventure",
-                "Boys love" to "Boys love",
-                "Comedy" to "Comedy",
-                "Drama" to "Drama",
-                "Fantasy" to "Fantasy",
-                "Harem" to "Harem",
-                "Historical" to "Historical",
-                "Horror" to "Horror",
-                "Isekai" to "Isekai",
-                "Josei" to "Josei",
-                "Romance" to "Romance",
-                "Seinen" to "Seinen",
-                "Shoujo" to "Shoujo",
-                "Shounen" to "Shounen",
-                "Slice of life" to "Slice of life",
-                "Supernatural" to "Supernatural",
-                "Transmigración" to "Transmigración",
-                "Yaoi" to "Yaoi",
-                "Yuri" to "Yuri",
-            ),
-        ),
-    )
+            GenreFilter(genres.map { it to it }),
+        )
+    }
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 }
