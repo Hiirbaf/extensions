@@ -60,7 +60,7 @@ open class LectorMOnline(
     override fun searchMangaParse(response: Response): MangasPage {
         val obj = response.parseAs<ComicListDto>()
 
-        val mangas = obj.comics.map { it.toSManga() }
+        val mangas = obj.data.map { it.toSManga() }
 
         return MangasPage(
             mangas,
