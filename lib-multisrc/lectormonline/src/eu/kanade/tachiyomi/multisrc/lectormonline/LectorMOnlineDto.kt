@@ -118,19 +118,16 @@ class ScanDto(
 @Serializable
 class ChapterDto(
     val id: Int,
-    @SerialName("chapter_number")
-    val chapterNumber: String,
+    val chapterNumber: Float,
     val title: String? = null,
-    @SerialName("release_date")
     val releaseDate: String,
-    @SerialName("url_pages")
     val urlPages: List<String> = emptyList(),
 ) {
 
     fun toSChapter() = SChapter.create().apply {
         url = id.toString()
         name = "Capítulo $chapterNumber"
-        chapter_number = chapterNumber.toFloatOrNull() ?: 0f
+        chapter_number = chapterNumber
         date_upload = dateFormat.tryParse(releaseDate) ?: 0L
     }
 }
