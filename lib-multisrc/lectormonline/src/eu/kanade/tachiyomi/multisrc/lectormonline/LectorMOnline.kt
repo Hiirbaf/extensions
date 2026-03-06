@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.multisrc.lectormonline
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -8,6 +9,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
 
@@ -131,7 +133,7 @@ open class LectorMOnline(
                 val request = GET("$baseUrl/api/comics?genres=", headers)
                 val response = client.newCall(request).execute()
 
-                val dto = json.decodeFromString<GenreResponseDto>(response.body.string())
+                val dto = response.parseAs<GenreResponseDto>()
 
                 genresCache = dto.genres
                 dto.genres
@@ -150,7 +152,7 @@ open class LectorMOnline(
                 ),
                 0,
             ),
-            GenreFilter(genres.map { it to it }),
+            GenreFilter(genres)
         )
     }
 
