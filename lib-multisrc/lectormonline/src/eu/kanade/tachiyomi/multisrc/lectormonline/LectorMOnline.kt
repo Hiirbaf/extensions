@@ -50,7 +50,7 @@ open class LectorMOnline(
 
         val url = when {
             !genre.isNullOrBlank() -> "$baseUrl/api/comics?page=$page&genres=$genre"
-            query.isNotBlank() -> "$baseUrl/api/comics?page=$page&search=$query"
+            query.isNotBlank() -> "$baseUrl/api/comics?page=$page&search=${query.trim()}"
             else -> "$baseUrl/api/comics?page=$page"
         }
 
@@ -60,7 +60,7 @@ open class LectorMOnline(
     override fun searchMangaParse(response: Response): MangasPage {
         val obj = response.parseAs<ComicListDto>()
 
-        val mangas = obj.data.map { it.toSManga() }
+        val mangas = obj.comics.map { it.toSManga() }
 
         return MangasPage(
             mangas,
