@@ -88,12 +88,10 @@ class ManhwaLatino :
 
     // --- Private helpers ---
 
-    private fun Response.isJpegServedAsOctetStream(): Boolean =
-        headers("Content-Type").contains("application/octet-stream") &&
-            request.url.toString().endsWith(".jpg")
+    private fun Response.isJpegServedAsOctetStream(): Boolean = headers("Content-Type").contains("application/octet-stream") &&
+        request.url.toString().endsWith(".jpg")
 
-    private fun Response.rewrapBodyAs(mediaType: String): Response =
-        newBuilder()
-            .body(body.source().asResponseBody(mediaType.toMediaType()))
-            .build()
+    private fun Response.rewrapBodyAs(mediaType: String): Response = newBuilder()
+        .body(body.source().asResponseBody(mediaType.toMediaType()))
+        .build()
 }
