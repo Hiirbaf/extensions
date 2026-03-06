@@ -25,7 +25,7 @@ open class LectorMOnline(
          * POPULAR / LATEST / SEARCH
          * ============================ */
 
-    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page&sort=views", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?sort=views&page=$page", headers)
 
     override fun popularMangaParse(response: Response): MangasPage = searchMangaParse(response)
 
