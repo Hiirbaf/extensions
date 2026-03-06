@@ -27,12 +27,17 @@ private val dateFormat =
 
 @Serializable
 class ComicListDto(
-    val comics: List<ComicDto>,
+    val data: List<ComicDto>,
+    val pagination: PaginationDto,
+) {
+    fun hasNextPage() = pagination.page < pagination.totalPages
+}
+
+@Serializable
+class PaginationDto(
     val page: Int,
     val totalPages: Int,
-) {
-    fun hasNextPage() = page < totalPages
-}
+)
 
 /* ============================
  * COMIC
