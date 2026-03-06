@@ -62,7 +62,7 @@ open class LectorMOnline(
             .addQueryParameter("page", page.toString())
 
         if (!query.isBlank()) {
-          url.addQueryParameter("search", query.trim())
+            url.addQueryParameter("search", query.trim())
         }
 
         if (!genre.isNullOrBlank()) {
