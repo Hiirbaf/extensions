@@ -49,29 +49,26 @@ class ComicDto(
     val comicScans: List<ScanDto> = emptyList(),
 ) {
 
-    fun toSManga() =
-        SManga.create().apply {
-            url = slug
-            title = this@ComicDto.title
-            thumbnail_url = coverImage
-            status = parseStatus(this@ComicDto.status)
-        }
+    fun toSManga() = SManga.create().apply {
+        url = slug
+        title = this@ComicDto.title
+        thumbnail_url = coverImage
+        status = parseStatus(this@ComicDto.status)
+    }
 
-    fun toSMangaDetails() =
-        SManga.create().apply {
-            url = slug
-            title = this@ComicDto.title
-            thumbnail_url = coverImage
-            description = this@ComicDto.description
-            status = parseStatus(this@ComicDto.status)
-            genre = comicGenres.joinToString(", ") { it.genre.name }
-        }
+    fun toSMangaDetails() = SManga.create().apply {
+        url = slug
+        title = this@ComicDto.title
+        thumbnail_url = coverImage
+        description = this@ComicDto.description
+        status = parseStatus(this@ComicDto.status)
+        genre = comicGenres.joinToString(", ") { it.genre.name }
+    }
 
-    fun getChapters(): List<SChapter> =
-        comicScans
-            .flatMap { it.chapters }
-            .map { it.toSChapter() }
-            .sortedByDescending { it.chapter_number }
+    fun getChapters(): List<SChapter> = comicScans
+        .flatMap { it.chapters }
+        .map { it.toSChapter() }
+        .sortedByDescending { it.chapter_number }
 }
 
 /* ============================
@@ -113,24 +110,22 @@ class ChapterDto(
     val urlPages: List<String> = emptyList(),
 ) {
 
-    fun toSChapter() =
-        SChapter.create().apply {
-            url = id.toString()
-            name =
-                title?.let { "Capítulo $chapterNumber - $it" }
-                    ?: "Capítulo $chapterNumber"
-            chapter_number = chapterNumber
-            date_upload = dateFormat.tryParse(releaseDate) ?: 0L
-        }
+    fun toSChapter() = SChapter.create().apply {
+        url = id.toString()
+        name =
+            title?.let { "Capítulo $chapterNumber - $it" }
+                ?: "Capítulo $chapterNumber"
+        chapter_number = chapterNumber
+        date_upload = dateFormat.tryParse(releaseDate) ?: 0L
+    }
 }
 
 /* ============================
  * STATUS PARSER
  * ============================ */
 
-private fun parseStatus(status: String?): Int =
-    when (status?.lowercase()) {
-        "ongoing" -> SManga.ONGOING
-        "completed" -> SManga.COMPLETED
-        else -> SManga.UNKNOWN
-    }
+private fun parseStatus(status: String?): Int = when (status?.lowercase()) {
+    "ongoing" -> SManga.ONGOING
+    "completed" -> SManga.COMPLETED
+    else -> SManga.UNKNOWN
+}
