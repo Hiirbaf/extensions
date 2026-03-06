@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.multisrc.lectormonline
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.utils.tryParse
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -20,11 +21,6 @@ private val dateFormat =
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
-@Serializable
-class ChapterResponseDto(
-    val data: ChapterDto,
-)
-
 /* ============================
  * LIST RESPONSE
  * ============================ */
@@ -37,6 +33,15 @@ class ComicListDto(
 ) {
     fun hasNextPage() = page < totalPages
 }
+
+/* ============================
+ * CHAPTER RESPONSE
+ * ============================ */
+
+@Serializable
+class ChapterResponseDto(
+    val data: ChapterDto,
+)
 
 /* ============================
  * COMIC
@@ -108,17 +113,20 @@ class ScanDto(
 @Serializable
 class ChapterDto(
     val id: Int,
-    val chapter_number: String,
+    @SerialName("chapter_number")
+    val chapterNumber: String,
     val title: String? = null,
-    val release_date: String,
-    val url_pages: List<String> = emptyList(),
+    @SerialName("release_date")
+    val releaseDate: String,
+    @SerialName("url_pages")
+    val urlPages: List<String> = emptyList(),
 ) {
 
     fun toSChapter() = SChapter.create().apply {
         url = id.toString()
-        name = "Capítulo $chapter_number"
-        chapter_number = chapter_number.toFloatOrNull() ?: 0f
-        date_upload = dateFormat.tryParse(release_date) ?: 0L
+        name = "Capítulo $chapterNumber"
+        chapter_number = chapterNumber.toFloatOrNull() ?: 0f
+        date_upload = dateFormat.tryParse(releaseDate) ?: 0L
     }
 }
 
