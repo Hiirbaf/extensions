@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
 import okhttp3.Request
 import okhttp3.Response
+import org.json.JSONObject
 
 open class LectorMOnline(
     override val name: String,
@@ -50,11 +51,32 @@ open class LectorMOnline(
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val dto = response.parseAs<ComicListDto>()
+        val json = response.body!!.string()
+        val obj = JSONObject(json)
 
-        val mangas = dto.comics.map { it.toSManga() }
+        val data = obj.getJSONArray("data")
+        val mangas = mutableListOf<SManga>()
 
-        return MangasPage(mangas, dto.hasNextPage())
+        for (i in 0 until data.length()) {
+            val mangaObj = data.getJSONObject(i)
+
+            val manga = SManga.create().apply {
+                title = mangaObj.getString("title")
+                setUrlWithoutDomain(mangaObj.getString("slug"))
+                thumbnail_url = mangaObj.optString("coverImage")
+            }
+
+            mangas.add(manga)
+        }
+
+        val pagination = obj.getJSONObject("pagination")
+        val currentPage = pagination.getInt("page")
+        val totalPages = pagination.getInt("totalPages")
+
+        return MangasPage(
+            mangas,
+            currentPage < totalPages,
+        )
     }
 
         /* ============================
