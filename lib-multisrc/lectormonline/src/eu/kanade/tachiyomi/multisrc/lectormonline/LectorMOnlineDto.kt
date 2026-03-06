@@ -20,6 +20,11 @@ private val dateFormat =
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
+@Serializable
+class ChapterResponseDto(
+    val data: ChapterDto,
+)
+
 /* ============================
  * LIST RESPONSE
  * ============================ */
@@ -103,11 +108,10 @@ class ScanDto(
 @Serializable
 class ChapterDto(
     val id: Int,
-    val chapterNumber: Float,
+    val chapter_number: String,
     val title: String? = null,
-    val slug: String,
-    val releaseDate: String,
-    val urlPages: List<String> = emptyList(),
+    val release_date: String,
+    val url_pages: List<String> = emptyList(),
 ) {
 
     fun toSChapter() = SChapter.create().apply {
