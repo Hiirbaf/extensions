@@ -23,21 +23,13 @@ class SortProperty(
 }
 
 class GenreFilter(
-    genres: List<Pair<String, String>>,
-) : UriPartFilter(
-    "Género",
-    arrayOf(
-        Pair("Todos", ""),
-        *genres.toTypedArray(),
-    ),
-)
-
-open class UriPartFilter(
-    displayName: String,
-    private val vals: Array<Pair<String, String>>,
+    genres: List<String>,
 ) : Filter.Select<String>(
-    displayName,
-    vals.map { it.first }.toTypedArray(),
+    "Género",
+    arrayOf("Todos", *genres.toTypedArray()),
 ) {
-    fun toUriPart() = vals[state].second
+    fun toUriPart(): String {
+        val selected = values[state]
+        return if (selected == "Todos") "" else selected
+    }
 }
