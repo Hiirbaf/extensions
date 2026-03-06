@@ -82,6 +82,11 @@ class ComicDto(
  * ============================ */
 
 @Serializable
+data class GenreResponseDto(
+    val genres: List<String>,
+)
+
+@Serializable
 class ComicGenreWrapper(
     val genre: GenreDto,
 )
