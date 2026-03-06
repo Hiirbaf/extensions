@@ -85,7 +85,7 @@ open class LectorMOnline(
 
     override fun getMangaUrl(manga: SManga): String = "$baseUrl/comics/${manga.url}"
 
-    override fun mangaDetailsRequest(manga: SManga): Request = GET("$baseUrl/api/comics/${manga.url}", headers)
+    override fun mangaDetailsRequest(manga: SManga): Request = GET("$baseUrl/api/comics/slug/${manga.url}", headers)
 
     override fun mangaDetailsParse(response: Response): SManga = response.parseAs<ComicDto>().toSMangaDetails()
 
