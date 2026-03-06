@@ -24,9 +24,17 @@ open class LectorMOnline(
          * POPULAR
          * ============================ */
 
-    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?sort=views&page=$page", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics/popular", headers)
 
-    override fun popularMangaParse(response: Response): MangasPage = searchMangaParse(response)
+    override fun popularMangaParse(response: Response): MangasPage {
+        val mangas = response.parseAs<List<ComicDto>>()
+            .map { it.toSManga() }
+
+        return MangasPage(
+            mangas,
+            false
+        )
+    }
 
         /* ============================
          * LATEST
