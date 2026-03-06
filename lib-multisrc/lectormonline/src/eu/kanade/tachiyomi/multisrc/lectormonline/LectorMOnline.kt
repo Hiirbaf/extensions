@@ -152,7 +152,7 @@ open class LectorMOnline(
                 ),
                 0,
             ),
-            GenreFilter(genres)
+            GenreFilter(genres),
         )
     }
 
