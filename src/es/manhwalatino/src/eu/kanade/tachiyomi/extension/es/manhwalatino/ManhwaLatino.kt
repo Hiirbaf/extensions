@@ -25,17 +25,14 @@ class ManhwaLatino :
     override val client: OkHttpClient = super.client.newBuilder()
         .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
         .addInterceptor { chain ->
-            val request = chain.request()
-            val headers = request.headers.newBuilder()
-                .removeAll("Accept-Encoding")
+            val request = chain.request().newBuilder()
+                .removeHeader("Accept-Encoding")
                 .build()
-            val response = chain.proceed(request.newBuilder().headers(headers).build())
-            if (response.headers("Content-Type").contains("application/octet-stream") && response.request.url.toString().endsWith(".jpg")) {
-                val orgBody = response.body.source()
-                val newBody = orgBody.asResponseBody("image/jpeg".toMediaType())
-                response.newBuilder()
-                    .body(newBody)
-                    .build()
+
+            val response = chain.proceed(request)
+
+            if (response.isJpegServedAsOctetStream()) {
+                response.rewrapBodyAs("image/jpeg")
             } else {
                 response
             }
@@ -56,42 +53,47 @@ class ManhwaLatino :
         var document = response.asJsoup()
         launchIO { countViews(document) }
 
-        val chapterList = mutableListOf<SChapter>()
-        var page = 1
+        return buildList {
+            var page = 1
+            do {
+                val elements = document.select(chapterListSelector())
+                if (elements.isEmpty()) break
 
-        do {
-            val chapterElements = document.select(chapterListSelector())
-            if (chapterElements.isEmpty()) break
-            chapterList.addAll(chapterElements.map { chapterFromElement(it) })
-            val hasNextPage = document.select(chapterListNextPageSelector).isNotEmpty()
-            if (hasNextPage) {
-                page++
-                val nextPageUrl = mangaUrl.newBuilder().setQueryParameter("t", page.toString()).build()
-                document = client.newCall(GET(nextPageUrl, headers)).execute().asJsoup()
-            } else {
-                break
-            }
-        } while (true)
+                elements.mapTo(this) { chapterFromElement(it) }
 
-        return chapterList
-    }
+                val hasNextPage = document.select(chapterListNextPageSelector).isNotEmpty()
+                if (!hasNextPage) break
 
-    override fun chapterFromElement(element: Element): SChapter {
-        val chapter = SChapter.create()
-
-        with(element) {
-            selectFirst(chapterUrlSelector)!!.let { urlElement ->
-                chapter.url = urlElement.attr("abs:href").let {
-                    it.substringBefore("?style=paged") + if (!it.endsWith(chapterUrlSuffix)) chapterUrlSuffix else ""
-                }
-                chapter.name = urlElement.wholeText().substringAfter("\n")
-            }
-
-            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")?.let { parseRelativeDate(it) }
-                ?: selectFirst("span a")?.attr("title")?.let { parseRelativeDate(it) }
-                ?: parseChapterDate(selectFirst(chapterDateSelector())?.text())
+                val nextUrl = mangaUrl.newBuilder()
+                    .setQueryParameter("t", (++page).toString())
+                    .build()
+                document = client.newCall(GET(nextUrl, headers)).execute().asJsoup()
+            } while (true)
         }
-
-        return chapter
     }
+
+    override fun chapterFromElement(element: Element): SChapter = SChapter.create().apply {
+        val urlElement = element.selectFirst(chapterUrlSelector)!!
+
+        url = urlElement.attr("abs:href").let { href ->
+            val base = href.substringBefore("?style=paged")
+            if (base.endsWith(chapterUrlSuffix)) base else base + chapterUrlSuffix
+        }
+        name = urlElement.wholeText().substringAfter("\n")
+
+        date_upload = element.selectFirst("img:not(.thumb)")?.attr("alt")?.let { parseRelativeDate(it) }
+            ?: element.selectFirst("span a")?.attr("title")?.let { parseRelativeDate(it) }
+            ?: parseChapterDate(element.selectFirst(chapterDateSelector())?.text())
+    }
+
+    // --- Private helpers ---
+
+    private fun Response.isJpegServedAsOctetStream(): Boolean =
+        headers("Content-Type").contains("application/octet-stream") &&
+            request.url.toString().endsWith(".jpg")
+
+    private fun Response.rewrapBodyAs(mediaType: String): Response =
+        newBuilder()
+            .body(body.source().asResponseBody(mediaType.toMediaType()))
+            .build()
 }
