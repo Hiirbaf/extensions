@@ -11,7 +11,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import keiyoushi.utils.parseAs
 import okhttp3.Request
 import okhttp3.Response
-import org.json.JSONObject
 
 open class LectorMOnline(
     override val name: String,
@@ -22,16 +21,24 @@ open class LectorMOnline(
     override val supportsLatest = true
 
         /* ============================
-         * POPULAR / LATEST / SEARCH
+         * POPULAR
          * ============================ */
 
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics?sort=views&page=$page", headers)
 
     override fun popularMangaParse(response: Response): MangasPage = searchMangaParse(response)
 
+        /* ============================
+         * LATEST
+         * ============================ */
+
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page", headers)
 
     override fun latestUpdatesParse(response: Response): MangasPage = searchMangaParse(response)
+
+        /* ============================
+         * SEARCH
+         * ============================ */
 
     override fun searchMangaRequest(
         page: Int,
@@ -51,31 +58,13 @@ open class LectorMOnline(
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val json = response.body!!.string()
-        val obj = JSONObject(json)
+        val obj = response.parseAs<ComicListDto>()
 
-        val data = obj.getJSONArray("data")
-        val mangas = mutableListOf<SManga>()
-
-        for (i in 0 until data.length()) {
-            val mangaObj = data.getJSONObject(i)
-
-            val manga = SManga.create().apply {
-                title = mangaObj.getString("title")
-                setUrlWithoutDomain(mangaObj.getString("slug"))
-                thumbnail_url = mangaObj.optString("coverImage")
-            }
-
-            mangas.add(manga)
-        }
-
-        val pagination = obj.getJSONObject("pagination")
-        val currentPage = pagination.getInt("page")
-        val totalPages = pagination.getInt("totalPages")
+        val mangas = obj.comics.map { it.toSManga() }
 
         return MangasPage(
             mangas,
-            currentPage < totalPages,
+            obj.hasNextPage(),
         )
     }
 
@@ -106,7 +95,7 @@ open class LectorMOnline(
     override fun pageListParse(response: Response): List<Page> {
         val obj = response.parseAs<ChapterResponseDto>()
 
-        return obj.data.url_pages.mapIndexed { index, image ->
+        return obj.data.urlPages.mapIndexed { index, image ->
             Page(index, imageUrl = image)
         }
     }
