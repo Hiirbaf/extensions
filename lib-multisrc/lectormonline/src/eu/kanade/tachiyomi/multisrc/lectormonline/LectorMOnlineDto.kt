@@ -66,11 +66,10 @@ class ComicDto(
         genre = comicGenres.joinToString(", ") { it.genre.name }
     }
 
-    fun getChapters(): List<SChapter> =
-        comicScans
-            .flatMap { it.chapters }
-            .map { it.toSChapter() }
-            .sortedByDescending { it.chapter_number }
+    fun getChapters(): List<SChapter> = comicScans
+        .flatMap { it.chapters }
+        .map { it.toSChapter() }
+        .sortedByDescending { it.chapter_number }
 }
 
 /* ============================
@@ -149,9 +148,8 @@ class ChapterPageDto(
  * STATUS PARSER
  * ============================ */
 
-private fun parseStatus(status: String?): Int =
-    when (status?.lowercase()) {
-        "ongoing" -> SManga.ONGOING
-        "completed" -> SManga.COMPLETED
-        else -> SManga.UNKNOWN
-    }
+private fun parseStatus(status: String?): Int = when (status?.lowercase()) {
+    "ongoing" -> SManga.ONGOING
+    "completed" -> SManga.COMPLETED
+    else -> SManga.UNKNOWN
+}
