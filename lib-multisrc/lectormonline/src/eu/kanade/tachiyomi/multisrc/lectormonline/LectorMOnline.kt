@@ -101,12 +101,12 @@ open class LectorMOnline(
          * PAGES
          * ============================ */
 
-    override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl/api/comics/${chapter.url}", headers)
+    override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl/api/chapters/${chapter.url}", headers)
 
     override fun pageListParse(response: Response): List<Page> {
-        val chapter = response.parseAs<ChapterDto>()
+        val obj = response.parseAs<ChapterResponseDto>()
 
-        return chapter.urlPages.mapIndexed { index, image ->
+        return obj.data.url_pages.mapIndexed { index, image ->
             Page(index, imageUrl = image)
         }
     }
