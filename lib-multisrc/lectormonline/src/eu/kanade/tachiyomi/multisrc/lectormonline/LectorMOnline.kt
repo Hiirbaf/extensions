@@ -113,14 +113,39 @@ open class LectorMOnline(
          * ============================ */
 
     override fun getFilterList(): FilterList = FilterList(
-        Filter.Header("Ordenar resultados"),
         SortByFilter(
             "Ordenar por",
             listOf(
-                SortProperty("Más vistos", "views"),
-                SortProperty("Más recientes", "created_at"),
+                SortProperty("Popularidad", "views"),
+                SortProperty("Recientes", "latest"),
             ),
             0,
+        ),
+        GenreFilter(
+            listOf(
+                "Acción" to "Acción",
+                "Action" to "Action",
+                "Adulto" to "Adulto",
+                "Adventure" to "Adventure",
+                "Boys love" to "Boys love",
+                "Comedy" to "Comedy",
+                "Drama" to "Drama",
+                "Fantasy" to "Fantasy",
+                "Harem" to "Harem",
+                "Historical" to "Historical",
+                "Horror" to "Horror",
+                "Isekai" to "Isekai",
+                "Josei" to "Josei",
+                "Romance" to "Romance",
+                "Seinen" to "Seinen",
+                "Shoujo" to "Shoujo",
+                "Shounen" to "Shounen",
+                "Slice of life" to "Slice of life",
+                "Supernatural" to "Supernatural",
+                "Transmigración" to "Transmigración",
+                "Yaoi" to "Yaoi",
+                "Yuri" to "Yuri",
+            ),
         ),
     )
 
