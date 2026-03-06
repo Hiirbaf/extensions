@@ -15,42 +15,22 @@ class SortByFilter(
         get() = sortProperties[state!!.index].value
 }
 
-class SortProperty(val name: String, val value: String) {
+class SortProperty(
+    val name: String,
+    val value: String,
+) {
     override fun toString(): String = name
 }
 
-/**
- * Aquí enviamos exactamente el mismo texto
- * que la API acepta (con mayúsculas).
- */
-class GenreFilter :
-    UriPartFilter(
-        "Género",
-        arrayOf(
-            "Todos" to "",
-            "Nuevo" to "Nuevo",
-            "Acción" to "Acción",
-            "Fantasía" to "Fantasía",
-            "Sistema" to "Sistema",
-            "Murim" to "Murim",
-            "Romance" to "Romance",
-            "Comedia" to "Comedia",
-            "Drama" to "Drama",
-            "Isekai" to "Isekai",
-            "Reencarnación" to "Reencarnación",
-            "Regresion" to "Regresion",
-            "Retornado" to "Retornado",
-            "Demonios" to "Demonios",
-            "Harem" to "Harem",
-            "Ecchi" to "Ecchi",
-            "Seinen " to "Seinen ",
-            "Shounen " to "Shounen ",
-            "Shoujo" to "Shoujo",
-            "Manhwa" to "Manhwa",
-            "Manhua" to "Manhua",
-            "Webtoon" to "Webtoon",
-        ),
-    )
+class GenreFilter(
+    genres: List<Pair<String, String>>,
+) : UriPartFilter(
+    "Género",
+    arrayOf(
+        Pair("Todos", ""),
+        *genres.toTypedArray(),
+    ),
+)
 
 open class UriPartFilter(
     displayName: String,
@@ -59,5 +39,5 @@ open class UriPartFilter(
     displayName,
     vals.map { it.first }.toTypedArray(),
 ) {
-    fun toUriPart(): String = vals[state].second
+    fun toUriPart() = vals[state].second
 }
