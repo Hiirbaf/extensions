@@ -22,14 +22,6 @@ class ManhwaLatino :
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
     ) {
 
-    init {
-        launchIO {
-            runCatching {
-                client.newCall(GET("$baseUrl/manga/el-jugador/", headers)).execute().close()
-            }
-        }
-    }
-
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
         .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
         .addInterceptor { chain ->
