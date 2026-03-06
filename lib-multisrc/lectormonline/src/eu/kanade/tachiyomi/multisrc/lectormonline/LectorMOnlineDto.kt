@@ -55,7 +55,7 @@ class ComicDto(
         .flatMap { it.chapters }
         .map { it.toSChapter() }
         .sortedByDescending { chapter -> chapter.chapter_number }
-    }
+}
 
 /* ============================
  * GENRES
@@ -108,10 +108,8 @@ class ChapterDto(
  * STATUS PARSER
  * ============================ */
 
-private fun parseStatus(status: String?): Int {
-    return when (status?.lowercase()) {
-        "ongoing" -> SManga.ONGOING
-        "completed" -> SManga.COMPLETED
-        else -> SManga.UNKNOWN
-    }
+private fun parseStatus(status: String?): Int = when (status?.lowercase()) {
+    "ongoing" -> SManga.ONGOING
+    "completed" -> SManga.COMPLETED
+    else -> SManga.UNKNOWN
 }
