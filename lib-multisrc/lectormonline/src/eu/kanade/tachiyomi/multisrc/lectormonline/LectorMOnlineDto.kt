@@ -116,9 +116,9 @@ class ChapterDto(
 
     fun toSChapter() = SChapter.create().apply {
         url = id.toString()
-        name = "Capítulo $chapterNumber"
-        chapter_number = chapterNumber
-        date_upload = dateFormat.tryParse(releaseDate) ?: 0L
+        name = "Capítulo $chapter_number"
+        chapter_number = chapter_number
+        date_upload = dateFormat.tryParse(release_date) ?: 0L
     }
 }
 
