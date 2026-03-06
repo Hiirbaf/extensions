@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.multisrc.lectormonline
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.utils.tryParse
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -26,26 +27,12 @@ private val dateFormat =
 
 @Serializable
 class ComicListDto(
-    val data: List<ComicDto>,
-    val pagination: PaginationDto,
-) {
-    fun hasNextPage() = pagination.page < pagination.totalPages
-}
-
-@Serializable
-class PaginationDto(
+    val comics: List<ComicDto>,
     val page: Int,
     val totalPages: Int,
-)
-
-/* ============================
- * CHAPTER RESPONSE
- * ============================ */
-
-@Serializable
-class ChapterResponseDto(
-    val data: ChapterDto,
-)
+) {
+    fun hasNextPage() = page < totalPages
+}
 
 /* ============================
  * COMIC
@@ -79,10 +66,11 @@ class ComicDto(
         genre = comicGenres.joinToString(", ") { it.genre.name }
     }
 
-    fun getChapters(): List<SChapter> = comicScans
-        .flatMap { it.chapters }
-        .map { it.toSChapter() }
-        .sortedByDescending { it.chapter_number }
+    fun getChapters(): List<SChapter> =
+        comicScans
+            .flatMap { it.chapters }
+            .map { it.toSChapter() }
+            .sortedByDescending { it.chapter_number }
 }
 
 /* ============================
@@ -111,32 +99,59 @@ class ScanDto(
 )
 
 /* ============================
- * CHAPTER
+ * CHAPTER (LIST)
  * ============================ */
 
 @Serializable
 class ChapterDto(
     val id: Int,
-    val chapterNumber: Float,
+    val chapterNumber: Float? = null,
     val title: String? = null,
-    val releaseDate: String,
+    val releaseDate: String? = null,
     val urlPages: List<String> = emptyList(),
 ) {
 
     fun toSChapter() = SChapter.create().apply {
         url = id.toString()
-        name = "Capítulo $chapterNumber"
-        chapter_number = chapterNumber
+        name =
+            if (title.isNullOrBlank()) {
+                "Capítulo ${chapterNumber ?: 0f}"
+            } else {
+                "Capítulo ${chapterNumber ?: 0f}: $title"
+            }
+        chapter_number = chapterNumber ?: 0f
         date_upload = dateFormat.tryParse(releaseDate) ?: 0L
     }
 }
 
 /* ============================
+ * CHAPTER (PAGES RESPONSE)
+ * ============================ */
+
+@Serializable
+class ChapterResponseDto(
+    val data: ChapterPageDto,
+)
+
+@Serializable
+class ChapterPageDto(
+    val id: Int,
+    @SerialName("chapter_number")
+    val chapterNumber: String? = null,
+    val title: String? = null,
+    @SerialName("release_date")
+    val releaseDate: String? = null,
+    @SerialName("url_pages")
+    val urlPages: List<String> = emptyList(),
+)
+
+/* ============================
  * STATUS PARSER
  * ============================ */
 
-private fun parseStatus(status: String?): Int = when (status?.lowercase()) {
-    "ongoing" -> SManga.ONGOING
-    "completed" -> SManga.COMPLETED
-    else -> SManga.UNKNOWN
-}
+private fun parseStatus(status: String?): Int =
+    when (status?.lowercase()) {
+        "ongoing" -> SManga.ONGOING
+        "completed" -> SManga.COMPLETED
+        else -> SManga.UNKNOWN
+    }
