@@ -157,45 +157,15 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Pages ========================
 
-    override fun pageListParse(document: Document): List<Page> {
-        val pages = mutableListOf<Page>()
-
-        // Gallery / nggallery images
-        val galleryImages = document.select(
-            "div.ngg-gallery-thumbnail img, " +
-                "div.ngg-galleryoverview img, " +
-                "#ngg-image-\\d+ img, " +
-                "div.entry-content img, " +
-                "div.post-content img, " +
-                "article img",
-        )
-
-        galleryImages.forEachIndexed { index, img ->
-            val url = img.attr("data-src").ifBlank {
-                img.attr("data-lazy-src").ifBlank {
-                    img.attr("src")
+    override fun pageListParse(document: Document): List<Page> = document.select(".pswp-gallery__item")
+        .mapIndexed { index, element ->
+            val url = element.attr("data-pswp-src")
+                .ifBlank {
+                    element.selectFirst("img")?.attr("data-pswp-src")
                 }
-            }
-            if (url.isNotBlank() && !url.contains("blank.gif") && !url.contains("placeholder")) {
-                // Try to get full-size image instead of thumbnail
-                val fullUrl = url
-                    .replace("-150x150", "")
-                    .replace(Regex("-\\d+x\\d+\\."), ".")
-                pages.add(Page(index, "", fullUrl))
-            }
-        }
 
-        // Also check for <a> links wrapping images (linked full-size)
-        if (pages.isEmpty()) {
-            document.select("div.entry-content a[href], div.post-content a[href]").forEachIndexed { index, a ->
-                val href = a.attr("href")
-                if (href.matches(Regex(".*\\.(jpg|jpeg|png|gif|webp)(\\?.*)?", RegexOption.IGNORE_CASE))) {
-                    pages.add(Page(index, "", href))
-                }
-            }
+            Page(index, "", url ?: "")
         }
-
-        return pages
     }
 
     override fun imageUrlParse(document: Document): String = document.selectFirst("div.entry-content img, article img")
