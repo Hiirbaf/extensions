@@ -1,11 +1,7 @@
-apply plugin: 'com.android.application'
-
 ext {
     extName = 'PornComix'
-    pkgNameSuffix = 'en.porncomix'
     extClass = '.PornComix'
-    extVersionCode = 1
-    isNsfw = true
+    extVersionCode = 54
 }
 
 apply from: "$rootDir/common.gradle"
