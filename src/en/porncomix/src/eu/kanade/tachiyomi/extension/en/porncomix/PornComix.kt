@@ -62,6 +62,16 @@ class PornComix : ParsedHttpSource() {
 
     override fun popularMangaNextPageSelector() = "a.nextp"
 
+    // ======================== Latest (disabled) ========================
+
+    override fun latestUpdatesRequest(page: Int): Request = popularMangaRequest(page)
+
+    override fun latestUpdatesSelector(): String = popularMangaSelector()
+
+    override fun latestUpdatesFromElement(element: Element): SManga = popularMangaFromElement(element)
+
+    override fun latestUpdatesNextPageSelector(): String? = popularMangaNextPageSelector()
+
     // ======================== Search ========================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = if (query.isNotBlank()) {
