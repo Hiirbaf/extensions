@@ -61,7 +61,7 @@ class PornComix : ParsedHttpSource() {
         return manga
     }
 
-    override fun popularMangaNextPageSelector() = "a.next.page-numbers, div.nav-links a.next"
+    override fun popularMangaNextPageSelector() = "a.nextp"
 
     // ======================== Latest ========================
 
