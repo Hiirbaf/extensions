@@ -65,7 +65,7 @@ class PornComix : ParsedHttpSource() {
     // ======================== Search ========================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = if (query.isNotBlank()) {
-        val encodedQuery = query.replace(" ", "+")
+        val encodedQuery = query.trim().replace(" ", "+")
         val url = if (page == 1) {
             "$baseUrl/?s=$encodedQuery"
         } else {
@@ -145,18 +145,29 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Pages ========================
 
-    override fun pageListParse(document: Document): List<Page> = document.select(".pswp-gallery__item")
-        .mapIndexed { index, element ->
-            val url = element.attr("data-pswp-src")
-                .ifBlank {
-                    element.selectFirst("img")?.attr("data-pswp-src")
-                }
+    override fun pageListParse(document: Document): List<Page> {
 
-            Page(index, "", url ?: "")
+        val pswp = document.select(".pswp-gallery__item")
+
+        if (pswp.isNotEmpty()) {
+            return pswp.mapIndexed { index, element ->
+                val url = element.attr("data-pswp-src")
+                Page(index, "", url)
+            }
         }
 
-    override fun imageUrlParse(document: Document): String = document.selectFirst("div.entry-content img, article img")
-        ?.attr("src") ?: ""
+        val images = document.select("div.entry-content img")
+
+        return images.mapIndexed { index, img ->
+            val url = img.attr("data-pagespeed-lazy-src")
+                .ifBlank { img.attr("data-src") }
+                .ifBlank { img.attr("src") }
+
+            Page(index, "", url)
+        }
+    }
+
+    override fun imageUrlParse(document: Document) = ""
 
     // ======================== Filters ========================
 
