@@ -35,8 +35,7 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Popular ========================
 
-    override fun popularMangaRequest(page: Int): Request {
-        return if (page == 1) {
+    override fun popularMangaRequest(page: Int): Request = if (page == 1) {
             GET("$baseUrl/multporn-net/", headers)
         } else {
             GET("$baseUrl/multporn-net/page/$page/", headers)
@@ -60,12 +59,10 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Latest ========================
 
-    override fun latestUpdatesRequest(page: Int): Request {
-        return if (page == 1) {
-            GET("$baseUrl/multporn-net/", headers)
-        } else {
-            GET("$baseUrl/multporn-net/page/$page/", headers)
-        }
+    override fun latestUpdatesRequest(page: Int): Request = if (page == 1) {
+        GET("$baseUrl/multporn-net/", headers)
+    } else {
+        GET("$baseUrl/multporn-net/page/$page/", headers)
     }
 
     override fun latestUpdatesSelector() = popularMangaSelector()
@@ -76,15 +73,13 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Search ========================
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        return if (query.isNotBlank()) {
-            val url = "$baseUrl/".toHttpUrl().newBuilder()
-                .addQueryParameter("s", query)
-                .build()
-            GET(url, headers)
-        } else {
-            popularMangaRequest(page)
-        }
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = if (query.isNotBlank()) {
+        val url = "$baseUrl/".toHttpUrl().newBuilder()
+            .addQueryParameter("s", query)
+            .build()
+        GET(url, headers)
+    } else {
+        popularMangaRequest(page)
     }
 
     override fun searchMangaSelector() = popularMangaSelector()
