@@ -40,7 +40,6 @@ class PornComix : ParsedHttpSource() {
         } else {
             GET("$baseUrl/multporn-net/page/$page/", headers)
         }
-    }
 
     override fun popularMangaSelector() = "div.post-listing article.post, div.content-area article"
 
