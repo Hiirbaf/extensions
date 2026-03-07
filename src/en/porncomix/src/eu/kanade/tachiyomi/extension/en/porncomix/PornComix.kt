@@ -146,7 +146,6 @@ class PornComix : ParsedHttpSource() {
     // ======================== Pages ========================
 
     override fun pageListParse(document: Document): List<Page> {
-
         val pswp = document.select(".pswp-gallery__item")
 
         if (pswp.isNotEmpty()) {
