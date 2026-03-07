@@ -80,9 +80,13 @@ class PornComix : ParsedHttpSource() {
     // ======================== Search ========================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = if (query.isNotBlank()) {
-        val url = "$baseUrl/".toHttpUrl().newBuilder()
-            .addQueryParameter("s", query)
-            .build()
+        val encodedQuery = query.replace(" ", "+")
+        
+        val url = if (page == 1) {
+            "$baseUrl/?s=$encodedQuery"
+        } else {
+            "$baseUrl/page/$page/?s=$encodedQuery"
+        }
         GET(url, headers)
     } else {
         popularMangaRequest(page)
