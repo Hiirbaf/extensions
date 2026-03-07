@@ -166,7 +166,6 @@ class PornComix : ParsedHttpSource() {
 
             Page(index, "", url ?: "")
         }
-    }
 
     override fun imageUrlParse(document: Document): String = document.selectFirst("div.entry-content img, article img")
         ?.attr("src") ?: ""
