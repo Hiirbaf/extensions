@@ -36,10 +36,10 @@ class PornComix : ParsedHttpSource() {
     // ======================== Popular ========================
 
     override fun popularMangaRequest(page: Int): Request = if (page == 1) {
-            GET("$baseUrl/multporn-net/", headers)
-        } else {
-            GET("$baseUrl/multporn-net/page/$page/", headers)
-        }
+        GET("$baseUrl/multporn-net/", headers)
+    } else {
+        GET("$baseUrl/multporn-net/page/$page/", headers)
+    }
 
     override fun popularMangaSelector() = "div.post-listing article.post, div.content-area article"
 
@@ -102,13 +102,13 @@ class PornComix : ParsedHttpSource() {
         manga.title = document.selectFirst("h1.post-title, h1.entry-title")?.text()?.trim() ?: ""
 
         manga.thumbnail_url = document.selectFirst(
-            "div.post-inner img, div.entry-content img, article img"
+            "div.post-inner img, div.entry-content img, article img",
         )?.let {
             it.attr("data-src").ifBlank { it.attr("src") }
         }
 
         manga.description = document.selectFirst(
-            "div.entry-content p, div.post-content p"
+            "div.entry-content p, div.post-content p",
         )?.text()?.trim()
 
         // Tags / genres
@@ -133,7 +133,7 @@ class PornComix : ParsedHttpSource() {
         chapter.name = "Chapter 1"
         chapter.setUrlWithoutDomain(
             element.selectFirst("link[rel=canonical]")?.attr("href")
-                ?: element.ownerDocument()?.location() ?: ""
+                ?: element.ownerDocument()?.location() ?: "",
         )
         return chapter
     }
@@ -158,7 +158,7 @@ class PornComix : ParsedHttpSource() {
                 "#ngg-image-\\d+ img, " +
                 "div.entry-content img, " +
                 "div.post-content img, " +
-                "article img"
+                "article img",
         )
 
         galleryImages.forEachIndexed { index, img ->
