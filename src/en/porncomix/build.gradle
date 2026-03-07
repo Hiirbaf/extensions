@@ -1,7 +1,8 @@
 ext {
     extName = 'PornComix'
     extClass = '.PornComix'
-    extVersionCode = 54
+    baseUrl = 'https://bestporncomix.com'
+    extVersionCode = 48
 }
 
 apply from: "$rootDir/common.gradle"
