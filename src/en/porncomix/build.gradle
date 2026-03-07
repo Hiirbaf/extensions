@@ -1,8 +1,11 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
 ext {
     extName = 'PornComix'
+    pkgNameSuffix = 'en.porncomix'
     extClass = '.PornComix'
-    baseUrl = 'https://porncomix.online'
-    overrideVersionCode = 2
+    extVersionCode = 1
     isNsfw = true
 }
 
