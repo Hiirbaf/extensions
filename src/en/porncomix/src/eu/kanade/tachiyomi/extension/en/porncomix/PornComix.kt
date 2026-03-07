@@ -42,16 +42,22 @@ class PornComix : ParsedHttpSource() {
         GET("$baseUrl/multporn-net/page/$page/", headers)
     }
 
-    override fun popularMangaSelector() = "div.post-listing article.post, div.content-area article"
+    override fun popularMangaSelector() = "#loops-wrapper article"
 
     override fun popularMangaFromElement(element: Element): SManga {
         val manga = SManga.create()
-        val anchor = element.selectFirst("h2.post-title a, h3.post-title a, .entry-title a")!!
+
+        val anchor = element.selectFirst("h2.post-title a")!!
+
         manga.setUrlWithoutDomain(anchor.attr("href"))
         manga.title = anchor.text().trim()
-        manga.thumbnail_url = element.selectFirst("img")?.let {
-            it.attr("data-src").ifBlank { it.attr("src") }
+
+        manga.thumbnail_url = element.selectFirst("img")?.let { img ->
+            img.attr("data-pagespeed-lazy-src")
+                .ifBlank { img.attr("data-src") }
+                .ifBlank { img.attr("src") }
         }
+
         return manga
     }
 
@@ -104,8 +110,10 @@ class PornComix : ParsedHttpSource() {
 
         manga.thumbnail_url = document.selectFirst(
             "div.post-inner img, div.entry-content img, article img",
-        )?.let {
-            it.attr("data-src").ifBlank { it.attr("src") }
+        )?.let { img ->
+            img.attr("data-pagespeed-lazy-src")
+                .ifBlank { img.attr("data-src") }
+                .ifBlank { img.attr("src") }
         }
 
         manga.description = document.selectFirst(
