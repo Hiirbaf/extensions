@@ -23,7 +23,7 @@ class PornComix : ParsedHttpSource() {
 
     override val lang = "en"
 
-    override val supportsLatest = true
+    override val supportsLatest = false
 
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -61,20 +61,6 @@ class PornComix : ParsedHttpSource() {
     }
 
     override fun popularMangaNextPageSelector() = "a.nextp"
-
-    // ======================== Latest ========================
-
-    override fun latestUpdatesRequest(page: Int): Request = if (page == 1) {
-        GET("$baseUrl/multporn-net/", headers)
-    } else {
-        GET("$baseUrl/multporn-net/page/$page/", headers)
-    }
-
-    override fun latestUpdatesSelector() = popularMangaSelector()
-
-    override fun latestUpdatesFromElement(element: Element) = popularMangaFromElement(element)
-
-    override fun latestUpdatesNextPageSelector() = popularMangaNextPageSelector()
 
     // ======================== Search ========================
 
