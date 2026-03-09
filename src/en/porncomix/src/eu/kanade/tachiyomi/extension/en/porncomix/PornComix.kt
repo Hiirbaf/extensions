@@ -129,7 +129,7 @@ class PornComix : ParsedHttpSource() {
 
     override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
         val chapter = SChapter.create().apply {
-            name = "Read"
+            name = "CHAPTER"
             setUrlWithoutDomain(manga.url)
         }
         return Observable.just(listOf(chapter))
@@ -166,7 +166,5 @@ class PornComix : ParsedHttpSource() {
 
     // ======================== Filters ========================
 
-    override fun getFilterList(): FilterList = FilterList(
-        Filter.Header("Filters only work with Browse, not Search"),
-    )
+    override fun getFilterList() = FilterList()
 }
