@@ -6,12 +6,14 @@ import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import rx.Observable
 
 class PornComix : ParsedHttpSource() {
 
@@ -118,20 +120,24 @@ class PornComix : ParsedHttpSource() {
         }
 
         manga.status = SManga.COMPLETED
-        manga.update_strategy = SManga.UpdateStrategy.ONLY_FETCH_ONCE
+        manga.update_strategy = UpdateStrategy.ONLY_FETCH_ONCE
 
         return manga
     }
 
     // ======================== Chapters ========================
 
-    override fun fetchChapterList(manga: SManga): List<SChapter> {
+    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
         val chapter = SChapter.create().apply {
             name = "Read"
             setUrlWithoutDomain(manga.url)
         }
-        return listOf(chapter)
+        return Observable.just(listOf(chapter))
     }
+
+    override fun chapterListSelector(): String = "unused"
+
+    override fun chapterFromElement(element: Element): SChapter = throw UnsupportedOperationException("Not used")
 
     // ======================== Pages ========================
 
