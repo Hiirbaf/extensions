@@ -117,15 +117,17 @@ class MangaTV :
     }
 }
 
-private class GenreFilter(genres: List<String>) : Filter.Group<Filter.CheckBox>(
-    "Géneros",
-    genres.map { Filter.CheckBox(it) },
-)
+private class GenreFilter(genres: List<String>) :
+    Filter.Group<Filter.CheckBox>(
+        "Géneros",
+        genres.map { Filter.CheckBox(it) },
+    )
 
-private class TypeFilter(types: List<String>) : Filter.Group<Filter.CheckBox>(
-    "Tipo",
-    types.map { Filter.CheckBox(it) },
-)
+private class TypeFilter(types: List<String>) :
+    Filter.Group<Filter.CheckBox>(
+        "Tipo",
+        types.map { Filter.CheckBox(it) },
+    )
 
 private class DemographyFilter(demographies: Array<String>) : Filter.Select("Demografía", demographies)
 
