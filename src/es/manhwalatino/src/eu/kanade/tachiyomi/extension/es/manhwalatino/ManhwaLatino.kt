@@ -44,13 +44,15 @@ class ManhwaLatino :
 
     override val chapterUrlSelector = "div.mini-letters > a"
 
+    override val fetchGenres = false
     override val useLoadMoreRequest = LoadMoreStrategy.Never
-    override fun countViewsRequest(document: org.jsoup.nodes.Document) = null
     override val mangaDetailsSelectorStatus = "div.post-content_item:contains(Estado del comic) > div.summary-content"
     override val mangaDetailsSelectorDescription = "div.post-content_item:contains(Resumen) div.summary-container"
     override val pageListParseSelector = "div.page-break img.wp-manga-chapter-img"
 
     private val chapterListNextPageSelector = "div.pagination > span.current + span"
+
+    override fun countViewsRequest(document: org.jsoup.nodes.Document) = null
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val mangaUrl = response.request.url
@@ -77,6 +79,11 @@ class ManhwaLatino :
 
         return chapterList
     }
+
+    override fun headersBuilder() = super.headersBuilder()
+        .add("Referer", "$baseUrl/")
+        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+        .add("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
 
     override fun chapterFromElement(element: Element): SChapter {
         val chapter = SChapter.create()
