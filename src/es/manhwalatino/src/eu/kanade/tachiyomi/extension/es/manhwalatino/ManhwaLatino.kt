@@ -1,39 +1,45 @@
 package eu.kanade.tachiyomi.extension.es.manhwalatino
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
-import eu.kanade.tachiyomi.network.interceptor.rateLimitHost
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import java.text.SimpleDateFormat
-import java.util.Locale
+import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.SManga
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.FormBody
+import okhttp3.Request
+import okhttp3.Response
 
-class ManhwaLatino :
-    Madara(
-        "Manhwa-Latino",
-        "https://manhwa-latino.com",
-        "es",
-        SimpleDateFormat("dd/MM/yyyy", Locale("es")),
-    ) {
+class PornComix : Madara("Manhwa-Latino", " https://manhwa-latino.com", "es") {
+    override val useNewChapterEndpoint = true
+    override val chapterUrlSuffix = ""
+    override val fetchGenres = false
+    override fun getFilterList() = FilterList()
 
-    override val client: OkHttpClient = network.cloudflareClient.newBuilder()
-        .rateLimitHost(baseUrl.toHttpUrl(), 1, 2)
-        .addInterceptor { chain ->
-            val request = chain.request().newBuilder()
-                .header(
-                    "User-Agent",
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36",
-                )
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                .header("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
-                .header("Referer", baseUrl)
-                .header("Connection", "keep-alive")
-                .build()
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        val form = FormBody.Builder().apply {
+            add("action", "wp-manga-search-manga")
+            add("title", query)
+        }.build()
 
-            chain.proceed(request)
+        return POST("$baseUrl/wp-admin/admin-ajax.php", xhrHeaders, form)
+    }
+
+    override fun searchMangaParse(response: Response): MangasPage {
+        val data = json.parseToJsonElement(response.body.string())
+
+        val entries = data.jsonObject["data"]!!.jsonArray.filter {
+            it.jsonObject["type"]!!.jsonPrimitive.content == "manga"
+        }.map {
+            val obj = it.jsonObject
+            SManga.create().apply {
+                title = obj["title"]!!.jsonPrimitive.content
+                setUrlWithoutDomain(obj["url"]!!.jsonPrimitive.content)
+            }
         }
-        .build()
 
-    override val useNewChapterEndpoint = false
-
-    override val pageListParseSelector = "div.reading-content img"
+        return MangasPage(entries, false)
+    }
 }
