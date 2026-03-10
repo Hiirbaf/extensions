@@ -44,6 +44,7 @@ class ManhwaLatino :
 
     override val chapterUrlSelector = "div.mini-letters > a"
 
+    override fun countViewsRequest(document: org.jsoup.nodes.Document) = null
     override val mangaDetailsSelectorStatus = "div.post-content_item:contains(Estado del comic) > div.summary-content"
     override val mangaDetailsSelectorDescription = "div.post-content_item:contains(Resumen) div.summary-container"
     override val pageListParseSelector = "div.page-break img.wp-manga-chapter-img"
