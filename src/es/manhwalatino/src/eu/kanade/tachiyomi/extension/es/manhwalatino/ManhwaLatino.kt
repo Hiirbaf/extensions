@@ -22,24 +22,8 @@ class ManhwaLatino :
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
     ) {
 
-    override val client: OkHttpClient = super.client.newBuilder()
-        .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
-        .addInterceptor { chain ->
-            val request = chain.request()
-            val headers = request.headers.newBuilder()
-                .removeAll("Accept-Encoding")
-                .build()
-            val response = chain.proceed(request.newBuilder().headers(headers).build())
-            if (response.headers("Content-Type").contains("application/octet-stream") && response.request.url.toString().endsWith(".jpg")) {
-                val orgBody = response.body.source()
-                val newBody = orgBody.asResponseBody("image/jpeg".toMediaType())
-                response.newBuilder()
-                    .body(newBody)
-                    .build()
-            } else {
-                response
-            }
-        }
+    override val client: OkHttpClient = network.cloudflareClient.newBuilder()
+        .rateLimitHost(baseUrl.toHttpUrl(), 2, 1)
         .build()
 
     override val useNewChapterEndpoint = true
