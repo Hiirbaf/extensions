@@ -22,25 +22,32 @@ class ManhwaLatino :
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
     ) {
 
-    override val client: OkHttpClient = super.client.newBuilder()
+    override val client: OkHttpClient = super.cloudflareClient.newBuilder()
         .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
         .addInterceptor { chain ->
             val request = chain.request()
-            val headers = request.headers.newBuilder()
-                .removeAll("Accept-Encoding")
-                .build()
-            val response = chain.proceed(request.newBuilder().headers(headers).build())
-            if (response.headers("Content-Type").contains("application/octet-stream") && response.request.url.toString().endsWith(".jpg")) {
-                val orgBody = response.body.source()
-                val newBody = orgBody.asResponseBody("image/jpeg".toMediaType())
-                response.newBuilder()
-                    .body(newBody)
-                    .build()
+            val response = chain.proceed(request)
+            if (
+                response.headers("Content-Type").contains("application/octet-stream") &&
+                response.request.url.toString().endsWith(".jpg")
+            ) {
+                val newBody = response.body.source()
+                    .asResponseBody("image/jpeg".toMediaType())
+                response.newBuilder().body(newBody).build()
             } else {
                 response
             }
         }
         .build()
+
+    // Pre-warm Cloudflare session on the manga listing page (triggers the JS challenge)
+    init {
+        launchIO {
+            try {
+                client.newCall(GET(baseUrl, headers)).execute().close()
+            } catch (_: Exception) {}
+        }
+    }
 
     override val useNewChapterEndpoint = true
 
@@ -51,6 +58,7 @@ class ManhwaLatino :
     override val pageListParseSelector = "div.page-break img.wp-manga-chapter-img"
 
     private val chapterListNextPageSelector = "div.pagination > span.current + span"
+
     override fun chapterListParse(response: Response): List<SChapter> {
         val mangaUrl = response.request.url
         var document = response.asJsoup()
@@ -66,7 +74,8 @@ class ManhwaLatino :
             val hasNextPage = document.select(chapterListNextPageSelector).isNotEmpty()
             if (hasNextPage) {
                 page++
-                val nextPageUrl = mangaUrl.newBuilder().setQueryParameter("t", page.toString()).build()
+                val nextPageUrl = mangaUrl.newBuilder()
+                    .setQueryParameter("t", page.toString()).build()
                 document = client.newCall(GET(nextPageUrl, headers)).execute().asJsoup()
             } else {
                 break
@@ -82,12 +91,14 @@ class ManhwaLatino :
         with(element) {
             selectFirst(chapterUrlSelector)!!.let { urlElement ->
                 chapter.url = urlElement.attr("abs:href").let {
-                    it.substringBefore("?style=paged") + if (!it.endsWith(chapterUrlSuffix)) chapterUrlSuffix else ""
+                    it.substringBefore("?style=paged") +
+                        if (!it.endsWith(chapterUrlSuffix)) chapterUrlSuffix else ""
                 }
                 chapter.name = urlElement.wholeText().substringAfter("\n")
             }
 
-            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")?.let { parseRelativeDate(it) }
+            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")
+                ?.let { parseRelativeDate(it) }
                 ?: selectFirst("span a")?.attr("title")?.let { parseRelativeDate(it) }
                 ?: parseChapterDate(selectFirst(chapterDateSelector())?.text())
         }
