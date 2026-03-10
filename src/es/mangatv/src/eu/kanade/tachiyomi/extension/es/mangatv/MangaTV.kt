@@ -25,6 +25,26 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
+    override fun popularMangaRequest(page: Int): Request {
+        val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegment(mangaUrlDirectory.substring(1))
+            .addQueryParameter("order", "popular")
+            .addQueryParameter("page", page.toString())
+            .build()
+
+        return GET(url, headers)
+    }
+
+    override fun latestUpdatesRequest(page: Int): Request {
+        val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegment(mangaUrlDirectory.substring(1))
+            .addQueryParameter("order", "update")
+            .addQueryParameter("page", page.toString())
+            .build()
+
+        return GET(url, headers)
+    }
+
     override fun pageListParse(document: Document): List<Page> {
         val unpackedScript = document.selectFirst("script:containsData(eval)")!!.data()
             .let(Unpacker::unpack)
@@ -51,9 +71,68 @@ class MangaTV :
     }
 
     // TODO: add demografia, order, tipos, genre
-    override fun getFilterList() = FilterList()
+    override fun getFilterList() = FilterList(
+
+        DemographyFilter(
+            arrayOf(
+                "Todos",
+                "Shounen",
+                "Shoujo",
+                "Seinen",
+                "Josei",
+            ),
+        ),
+
+        TypeFilter(
+            listOf(
+                "Manga",
+                "Manhwa",
+                "Manhua",
+                "Novela",
+                "OEL",
+            ),
+        ),
+
+        GenreFilter(
+            listOf(
+                "Acción",
+                "Aventura",
+                "Comedia",
+                "Drama",
+                "Fantasía",
+                "Romance",
+                "Slice of Life",
+                "Harem",
+                "Isekai",
+                "Ciencia Ficción",
+            ),
+        ),
+
+        OrderFilter(),
+    )
 
     companion object {
         val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
     }
 }
+
+private class GenreFilter(genres: List<String>) :
+    Filter.CheckBoxGroup<String>("Géneros", genres)
+
+private class TypeFilter(types: List<String>) :
+    Filter.CheckBoxGroup<String>("Tipo", types)
+
+private class DemographyFilter(demographies: Array<String>) :
+    Filter.Select<String>("Demografía", demographies)
+
+private class OrderFilter :
+    Filter.Select<String>(
+        "Ordenar",
+        arrayOf(
+            "Por defecto",
+            "Popularidad",
+            "Actualizado",
+            "Título",
+            "Rating",
+        ),
+    )
