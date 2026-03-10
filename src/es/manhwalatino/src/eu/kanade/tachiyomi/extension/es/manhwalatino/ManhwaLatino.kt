@@ -44,7 +44,7 @@ class ManhwaLatino :
 
     override val chapterUrlSelector = "div.mini-letters > a"
 
-        override val useLoadMoreRequest = LoadMoreStrategy.Never
+    override val useLoadMoreRequest = LoadMoreStrategy.Never
     override fun countViewsRequest(document: org.jsoup.nodes.Document) = null
     override val mangaDetailsSelectorStatus = "div.post-content_item:contains(Estado del comic) > div.summary-content"
     override val mangaDetailsSelectorDescription = "div.post-content_item:contains(Resumen) div.summary-container"
