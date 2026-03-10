@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import keiyoushi.lib.unpacker.Unpacker
@@ -116,9 +117,9 @@ class MangaTV :
     }
 }
 
-private class GenreFilter(genres: List<String>) : Filter.CheckBoxGroup<String>("Géneros", genres)
+private class GenreFilter(genres: Array<String>) : Filter.CheckBoxGroup<String>("Géneros", genres)
 
-private class TypeFilter(types: List<String>) : Filter.CheckBoxGroup<String>("Tipo", types)
+private class TypeFilter(types: Array<String>) : Filter.CheckBoxGroup<String>("Tipo", types)
 
 private class DemographyFilter(demographies: Array<String>) : Filter.Select<String>("Demografía", demographies)
 
