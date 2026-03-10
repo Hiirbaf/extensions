@@ -40,7 +40,7 @@ jobs:
       - name: Get last successful CI commit
         uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1 # v4.4.0
         with:
-          fallback-sha: 4b825dc642cb6eb9a060e54bf8d69288fbee4904 # empty tree
+          fallback-sha: HEAD~1 # empty tree
 
       - id: generate-matrices
         name: Create output matrices
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload APKs (${{ matrix.chunk.number }})
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        if: "github.repository == 'keiyoushi/extensions-source'"
+        if: "github.repository == 'hiirbaf/extensions'"
         with:
           name: "individual-apks-${{ matrix.chunk.number }}"
           path: "**/*.apk"
