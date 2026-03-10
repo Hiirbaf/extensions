@@ -23,31 +23,22 @@ class ManhwaLatino :
     ) {
 
     override val client: OkHttpClient = network.cloudflareClient.newBuilder()
-        .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
+        .rateLimitHost(baseUrl.toHttpUrl(), 2, 5)
+        .addInterceptor(CloudflareWarmupInterceptor(baseUrl, headers))
         .addInterceptor { chain ->
-            val request = chain.request()
-            val response = chain.proceed(request)
+            val response = chain.proceed(chain.request())
             if (
                 response.headers("Content-Type").contains("application/octet-stream") &&
                 response.request.url.toString().endsWith(".jpg")
             ) {
-                val newBody = response.body.source()
-                    .asResponseBody("image/jpeg".toMediaType())
-                response.newBuilder().body(newBody).build()
+                response.newBuilder()
+                    .body(response.body.source().asResponseBody("image/jpeg".toMediaType()))
+                    .build()
             } else {
                 response
             }
         }
         .build()
-
-    // Pre-warm Cloudflare session on the manga listing page (triggers the JS challenge)
-    init {
-        launchIO {
-            try {
-                client.newCall(GET("$baseUrl/?post_type=wp-manga", headers)).execute().close()
-            } catch (_: Exception) {}
-        }
-    }
 
     override val useNewChapterEndpoint = true
 
