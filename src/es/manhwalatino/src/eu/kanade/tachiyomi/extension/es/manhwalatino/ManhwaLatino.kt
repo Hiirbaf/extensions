@@ -44,7 +44,7 @@ class ManhwaLatino :
     init {
         launchIO {
             try {
-                client.newCall(GET("$baseUrl/manga/", headers)).execute().close()
+                client.newCall(GET("$baseUrl/?post_type=wp-manga", headers)).execute().close()
             } catch (_: Exception) {}
         }
     }
