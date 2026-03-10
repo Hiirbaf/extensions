@@ -116,14 +116,11 @@ class MangaTV :
     }
 }
 
-private class GenreFilter(genres: List<String>) :
-    Filter.CheckBoxGroup<String>("Géneros", genres)
+private class GenreFilter(genres: List<String>) : Filter.CheckBoxGroup<String>("Géneros", genres)
 
-private class TypeFilter(types: List<String>) :
-    Filter.CheckBoxGroup<String>("Tipo", types)
+private class TypeFilter(types: List<String>) : Filter.CheckBoxGroup<String>("Tipo", types)
 
-private class DemographyFilter(demographies: Array<String>) :
-    Filter.Select<String>("Demografía", demographies)
+private class DemographyFilter(demographies: Array<String>) : Filter.Select<String>("Demografía", demographies)
 
 private class OrderFilter :
     Filter.Select<String>(
