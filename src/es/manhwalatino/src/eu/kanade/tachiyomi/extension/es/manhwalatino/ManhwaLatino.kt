@@ -12,7 +12,7 @@ import okhttp3.FormBody
 import okhttp3.Request
 import okhttp3.Response
 
-class PornComix : Madara("Manhwa-Latino", " https://manhwa-latino.com", "es") {
+class ManhwaLatino : Madara("Manhwa-Latino", " https://manhwa-latino.com", "es") {
     override val useNewChapterEndpoint = true
     override val chapterUrlSuffix = ""
     override val fetchGenres = false
