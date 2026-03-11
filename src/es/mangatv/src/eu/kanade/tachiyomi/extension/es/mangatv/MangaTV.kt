@@ -5,12 +5,14 @@ import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import keiyoushi.lib.unpacker.Unpacker
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -23,24 +25,16 @@ class MangaTV :
         dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT),
     ) {
 
-    override fun popularMangaRequest(page: Int): Request {
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("order", "popular")
             .addQueryParameter("page", page.toString())
-            .build()
 
-        return GET(url, headers)
-    }
+        if (query.isNotBlank()) {
+            url.addQueryParameter("s", query)
+        }
 
-    override fun latestUpdatesRequest(page: Int): Request {
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("order", "update")
-            .addQueryParameter("page", page.toString())
-            .build()
-
-        return GET(url, headers)
+        return GET(url.build(), headers)
     }
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
@@ -62,12 +56,34 @@ class MangaTV :
         }
     }
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("s", query)
-            .addQueryParameter("page", page.toString())
-        return GET(url.build(), headers)
+    override fun chapterFromElement(element: Element): SChapter {
+        val chapter = SChapter.create()
+
+        val spans = element.select(".chapternum")
+
+        val chapterText = spans.getOrNull(0)?.text().orEmpty()
+        val infoText = spans.getOrNull(1)?.text().orEmpty()
+
+        chapter.name = chapterText
+
+        chapter.chapter_number = chapterText
+            .substringAfter("Capítulo", "")
+            .trim()
+            .replace(",", ".")
+            .toFloatOrNull() ?: -1f
+
+        infoText.substringAfter("|", "")
+            .replace("Fansub", "")
+            .trim()
+            .takeIf { it.isNotEmpty() }
+            ?.let { chapter.scanlator = it }
+
+        chapter.setUrlWithoutDomain(element.select("a").attr("href"))
+
+        chapter.date_upload =
+            element.selectFirst(".chapterdate")?.text()?.let { parseChapterDate(it) } ?: 0L
+
+        return chapter
     }
 
     // TODO: add demografia, order, tipos, genre
