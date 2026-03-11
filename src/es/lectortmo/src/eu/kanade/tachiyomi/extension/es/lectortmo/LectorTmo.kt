@@ -48,7 +48,9 @@ data class NsfwState(
     val trap: Boolean,
 )
 
-class LectorTmo : ParsedHttpSource(), ConfigurableSource {
+class LectorTmo :
+    ParsedHttpSource(),
+    ConfigurableSource {
 
     override val id = 4146344224513899730
 
@@ -133,11 +135,9 @@ class LectorTmo : ParsedHttpSource(), ConfigurableSource {
         return if (addErotic) "$params&erotic=false" else params
     }
 
-    override fun fetchPopularManga(page: Int): Observable<MangasPage> {
-        return safeClient.newCall(popularMangaRequest(page))
-            .asObservableSuccess()
-            .map { popularMangaParse(it) }
-    }
+    override fun fetchPopularManga(page: Int): Observable<MangasPage> = safeClient.newCall(popularMangaRequest(page))
+        .asObservableSuccess()
+        .map { popularMangaParse(it) }
 
     override fun popularMangaRequest(page: Int) = GET(
         "$baseUrl/library?order_item=likes_count&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
@@ -156,11 +156,9 @@ class LectorTmo : ParsedHttpSource(), ConfigurableSource {
         }
     }
 
-    override fun fetchLatestUpdates(page: Int): Observable<MangasPage> {
-        return safeClient.newCall(latestUpdatesRequest(page))
-            .asObservableSuccess()
-            .map { latestUpdatesParse(it) }
-    }
+    override fun fetchLatestUpdates(page: Int): Observable<MangasPage> = safeClient.newCall(latestUpdatesRequest(page))
+        .asObservableSuccess()
+        .map { latestUpdatesParse(it) }
 
     override fun latestUpdatesRequest(page: Int) = GET(
         "$baseUrl/library?order_item=creation&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
