@@ -18,6 +18,10 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import eu.kanade.tachiyomi.util.asJsoup
 import keiyoushi.utils.getPreferencesLazy
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromString
+import kotlinx.serialization.json.encodeToString
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
@@ -35,9 +39,16 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-class LectorTmo :
-    ParsedHttpSource(),
-    ConfigurableSource {
+@Serializable
+data class NsfwState(
+    val ecchi: Boolean,
+    val girlsLove: Boolean,
+    val boysLove: Boolean,
+    val harem: Boolean,
+    val trap: Boolean,
+)
+
+class LectorTmo : ParsedHttpSource(), ConfigurableSource {
 
     override val id = 4146344224513899730
 
@@ -47,23 +58,24 @@ class LectorTmo :
 
     override val lang = "es"
 
+    override val supportsLatest = true
+
     private val preferences: SharedPreferences by getPreferencesLazy()
 
-    override val supportsLatest = true
+    private val json = Json { ignoreUnknownKeys = true }
 
     // Needed to ignore the referer header in WebView
     private val tmoHeaders = super.headersBuilder()
         .set("Referer", "$baseUrl/")
         .build()
 
+    @SuppressLint("CustomX509TrustManager")
     private fun OkHttpClient.Builder.ignoreAllSSLErrors(): OkHttpClient.Builder {
-        val naiveTrustManager =
-            @SuppressLint("CustomX509TrustManager")
-            object : X509TrustManager {
-                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-                override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) = Unit
-                override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) = Unit
-            }
+        val naiveTrustManager = object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+            override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) = Unit
+            override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) = Unit
+        }
 
         val insecureSocketFactory = SSLContext.getInstance("SSL").apply {
             val trustAllCerts = arrayOf<TrustManager>(naiveTrustManager)
@@ -84,13 +96,12 @@ class LectorTmo :
 
     private var lastCFDomain: String = ""
 
-    // Used on all request except on image requests
+    // Used on all requests except image requests
     private val safeClient: OkHttpClient by lazy {
         network.cloudflareClient.newBuilder()
             .addInterceptor { chain ->
                 if (!getSaveLastCFUrlPref()) return@addInterceptor chain.proceed(chain.request())
-                val request = chain.request()
-                val response = chain.proceed(request)
+                val response = chain.proceed(chain.request())
                 if (response.code in CF_ERROR_CODES && response.header("Server") in CF_SERVER_CHECK) {
                     lastCFDomain = response.request.url.toString()
                 }
@@ -101,15 +112,37 @@ class LectorTmo :
     }
 
     // Marks erotic content as false and excludes: Ecchi(6), GirlsLove(17), BoysLove(18), Harem(19), Trap(94) genders
-    private fun getSFWUrlPart(): String = if (getSFWModePref()) "&exclude_genders%5B%5D=6&exclude_genders%5B%5D=17&exclude_genders%5B%5D=18&exclude_genders%5B%5D=19&exclude_genders%5B%5D=94&erotic=false" else ""
+    private fun getSFWUrlPart(): String {
+        val hidden = mutableListOf<String>()
 
-    override fun fetchPopularManga(page: Int): Observable<MangasPage> = safeClient.newCall(popularMangaRequest(page))
-        .asObservableSuccess()
-        .map { response ->
-            popularMangaParse(response)
+        if (getSfwGeneral()) {
+            hidden += listOf("6", "17", "18", "19", "94")
+        } else {
+            if (getNsfwEcchi()) hidden += "6"
+            if (getNsfwGirlsLove()) hidden += "17"
+            if (getNsfwBoysLove()) hidden += "18"
+            if (getNsfwHarem()) hidden += "19"
+            if (getNsfwTrap()) hidden += "94"
         }
 
-    override fun popularMangaRequest(page: Int) = GET("$baseUrl/library?order_item=likes_count&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page", tmoHeaders)
+        if (hidden.isEmpty()) return ""
+
+        val params = hidden.joinToString("") { "&exclude_genders[]=$it" }
+        val addErotic = getSfwGeneral() || getNsfwEcchi()
+
+        return if (addErotic) "$params&erotic=false" else params
+    }
+
+    override fun fetchPopularManga(page: Int): Observable<MangasPage> {
+        return safeClient.newCall(popularMangaRequest(page))
+            .asObservableSuccess()
+            .map { popularMangaParse(it) }
+    }
+
+    override fun popularMangaRequest(page: Int) = GET(
+        "$baseUrl/library?order_item=likes_count&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
+        tmoHeaders,
+    )
 
     override fun popularMangaNextPageSelector() = "a[rel='next']"
 
@@ -123,13 +156,16 @@ class LectorTmo :
         }
     }
 
-    override fun fetchLatestUpdates(page: Int): Observable<MangasPage> = safeClient.newCall(latestUpdatesRequest(page))
-        .asObservableSuccess()
-        .map { response ->
-            latestUpdatesParse(response)
-        }
+    override fun fetchLatestUpdates(page: Int): Observable<MangasPage> {
+        return safeClient.newCall(latestUpdatesRequest(page))
+            .asObservableSuccess()
+            .map { latestUpdatesParse(it) }
+    }
 
-    override fun latestUpdatesRequest(page: Int) = GET("$baseUrl/library?order_item=creation&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page", tmoHeaders)
+    override fun latestUpdatesRequest(page: Int) = GET(
+        "$baseUrl/library?order_item=creation&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
+        tmoHeaders,
+    )
 
     override fun latestUpdatesNextPageSelector() = popularMangaNextPageSelector()
 
@@ -137,22 +173,21 @@ class LectorTmo :
 
     override fun latestUpdatesFromElement(element: Element) = popularMangaFromElement(element)
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = if (query.startsWith(PREFIX_SLUG_SEARCH)) {
-        val realQuery = query.removePrefix(PREFIX_SLUG_SEARCH)
-
-        safeClient.newCall(searchMangaBySlugRequest(realQuery))
-            .asObservableSuccess()
-            .map { response ->
-                val details = mangaDetailsParse(response)
-                details.url = "/$PREFIX_LIBRARY/$realQuery"
-                MangasPage(listOf(details), false)
-            }
-    } else {
-        safeClient.newCall(searchMangaRequest(page, query, filters))
-            .asObservableSuccess()
-            .map { response ->
-                searchMangaParse(response)
-            }
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+        return if (query.startsWith(PREFIX_SLUG_SEARCH)) {
+            val realQuery = query.removePrefix(PREFIX_SLUG_SEARCH)
+            safeClient.newCall(searchMangaBySlugRequest(realQuery))
+                .asObservableSuccess()
+                .map { response ->
+                    val details = mangaDetailsParse(response)
+                    details.url = "/$PREFIX_LIBRARY/$realQuery"
+                    MangasPage(listOf(details), false)
+                }
+        } else {
+            safeClient.newCall(searchMangaRequest(page, query, filters))
+                .asObservableSuccess()
+                .map { searchMangaParse(it) }
+        }
     }
 
     private fun searchMangaBySlugRequest(slug: String) = GET("$baseUrl/$PREFIX_LIBRARY/$slug", tmoHeaders)
@@ -160,50 +195,44 @@ class LectorTmo :
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = "$baseUrl/library".toHttpUrl().newBuilder()
         url.addQueryParameter("title", query)
-        if (getSFWModePref()) {
-            SFW_MODE_PREF_EXCLUDE_GENDERS.forEach { gender ->
-                url.addQueryParameter("exclude_genders[]", gender)
-            }
-            url.addQueryParameter("erotic", "false")
+
+        val nsfwPart = getSFWUrlPart()
+        if (nsfwPart.isNotEmpty()) {
+            nsfwPart.split("&")
+                .filter { it.isNotBlank() }
+                .forEach { param ->
+                    val parts = param.split("=")
+                    val key = parts.first().removePrefix("?")
+                    val value = parts.getOrElse(1) { "" }
+                    url.addQueryParameter(key, value)
+                }
         }
+
         url.addQueryParameter("page", page.toString())
-        url.addQueryParameter("_pg", "1") // Extra Query to Prevent Scrapping aka without it = 403
+        url.addQueryParameter("_pg", "1") // Extra query to prevent scraping block (without it = 403)
+
         filters.forEach { filter ->
             when (filter) {
-                is Types -> {
-                    url.addQueryParameter("type", filter.toUriPart())
-                }
-
-                is Demography -> {
-                    url.addQueryParameter("demography", filter.toUriPart())
-                }
-
+                is Types -> url.addQueryParameter("type", filter.toUriPart())
+                is Demography -> url.addQueryParameter("demography", filter.toUriPart())
                 is SortBy -> {
                     if (filter.state != null) {
                         url.addQueryParameter("order_item", SORTABLES[filter.state!!.index].second)
                         url.addQueryParameter(
                             "order_dir",
-                            if (filter.state!!.ascending) {
-                                "asc"
-                            } else {
-                                "desc"
-                            },
+                            if (filter.state!!.ascending) "asc" else "desc",
                         )
                     }
                 }
-
                 is ContentTypeList -> {
                     filter.state.forEach { content ->
-                        if (!getSFWModePref() || (getSFWModePref() && content.id != "erotic")) {
-                            when (content.state) {
-                                Filter.TriState.STATE_IGNORE -> url.addQueryParameter(content.id, "")
-                                Filter.TriState.STATE_INCLUDE -> url.addQueryParameter(content.id, "true")
-                                Filter.TriState.STATE_EXCLUDE -> url.addQueryParameter(content.id, "false")
-                            }
+                        when (content.state) {
+                            Filter.TriState.STATE_IGNORE -> url.addQueryParameter(content.id, "")
+                            Filter.TriState.STATE_INCLUDE -> url.addQueryParameter(content.id, "true")
+                            Filter.TriState.STATE_EXCLUDE -> url.addQueryParameter(content.id, "false")
                         }
                     }
                 }
-
                 is GenreList -> {
                     filter.state.forEach { genre ->
                         when (genre.state) {
@@ -212,28 +241,28 @@ class LectorTmo :
                         }
                     }
                 }
-
                 else -> {}
             }
         }
         return GET(url.build(), tmoHeaders)
     }
+
     override fun searchMangaSelector() = popularMangaSelector()
 
     override fun searchMangaNextPageSelector() = popularMangaNextPageSelector()
 
-    override fun searchMangaFromElement(element: Element): SManga = popularMangaFromElement(element)
+    override fun searchMangaFromElement(element: Element) = popularMangaFromElement(element)
 
     override fun getMangaUrl(manga: SManga): String {
         if (lastCFDomain.isNotEmpty()) return lastCFDomain.also { lastCFDomain = "" }
         return super.getMangaUrl(manga)
     }
 
-    override fun fetchMangaDetails(manga: SManga): Observable<SManga> = safeClient.newCall(mangaDetailsRequest(manga))
-        .asObservableSuccess()
-        .map { response ->
-            mangaDetailsParse(response).apply { initialized = true }
-        }
+    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
+        return safeClient.newCall(mangaDetailsRequest(manga))
+            .asObservableSuccess()
+            .map { mangaDetailsParse(it).apply { initialized = true } }
+    }
 
     override fun mangaDetailsRequest(manga: SManga) = GET(baseUrl + manga.url, tmoHeaders)
 
@@ -245,7 +274,9 @@ class LectorTmo :
         }
         genre = buildList {
             addAll(document.select("a.py-2").eachText())
-            document.selectFirst("h1.book-type")?.text()?.capitalize()?.also(::add)
+            document.selectFirst("h1.book-type")?.text()
+                ?.replaceFirstChar { it.uppercase() }
+                ?.also(::add)
         }.joinToString()
         description = document.select("p.element-description").text()
         status = parseStatus(document.select("span.book-status").text())
@@ -267,11 +298,11 @@ class LectorTmo :
         return super.getChapterUrl(chapter)
     }
 
-    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = safeClient.newCall(chapterListRequest(manga))
-        .asObservableSuccess()
-        .map { response ->
-            chapterListParse(response)
-        }
+    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
+        return safeClient.newCall(chapterListRequest(manga))
+            .asObservableSuccess()
+            .map { chapterListParse(it) }
+    }
 
     override fun chapterListRequest(manga: SManga) = mangaDetailsRequest(manga)
 
@@ -291,7 +322,7 @@ class LectorTmo :
             if (getScanlatorPref()) {
                 chapterScanlator.forEach { chapters.add(chapterFromElement(it, chapterName)) }
             } else {
-                chapterScanlator.first { chapters.add(chapterFromElement(it, chapterName)) }
+                chapterScanlator.first().let { chapters.add(chapterFromElement(it, chapterName)) }
             }
         }
         return chapters
@@ -314,22 +345,22 @@ class LectorTmo :
         } ?: 0
     }
 
-    private fun parseChapterDate(date: String): Long = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        .parse(date)?.time ?: 0
+    private fun parseChapterDate(date: String): Long {
+        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(date)?.time ?: 0
+    }
 
-    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> = safeClient.newCall(pageListRequest(chapter))
-        .asObservableSuccess()
-        .map { response ->
-            pageListParse(response)
-        }
+    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
+        return safeClient.newCall(pageListRequest(chapter))
+            .asObservableSuccess()
+            .map { pageListParse(it) }
+    }
 
-    override fun pageListRequest(chapter: SChapter): Request = GET(chapter.url, tmoHeaders)
+    override fun pageListRequest(chapter: SChapter) = GET(chapter.url, tmoHeaders)
 
     override fun pageListParse(document: Document): List<Page> {
         var doc = redirectToReadPage(document)
 
         val currentUrl = doc.location()
-
         val newUrl = if (!currentUrl.contains("cascade")) {
             currentUrl.substringBefore("paginated") + "cascade"
         } else {
@@ -342,24 +373,20 @@ class LectorTmo :
                 .build()
             doc = client.newCall(GET(newUrl, redirectHeaders)).execute().asJsoup()
         }
-        val imagesScript = doc.selectFirst("script:containsData(var dirPath):containsData(var images)")
 
+        val imagesScript = doc.selectFirst("script:containsData(var dirPath):containsData(var images)")
         imagesScript?.data()?.let {
-            val dirPath = DIRPATH_REGEX.find(imagesScript.data())?.groupValues?.get(1)
-            val images = IMAGES_REGEX.find(imagesScript.data())?.groupValues?.get(1)?.split(",")?.map { img ->
+            val dirPath = DIRPATH_REGEX.find(it)?.groupValues?.get(1)
+            val images = IMAGES_REGEX.find(it)?.groupValues?.get(1)?.split(",")?.map { img ->
                 img.trim().removeSurrounding("\"")
             }
             if (dirPath != null && images != null) {
-                return images.mapIndexed { i, img ->
-                    Page(i, doc.location(), "$dirPath$img")
-                }
+                return images.mapIndexed { i, img -> Page(i, doc.location(), "$dirPath$img") }
             }
         }
 
-        doc.select("div.viewer-container img:not(noscript img)").let {
-            return it.mapIndexed { i, img ->
-                Page(i, doc.location(), img.imgAttr())
-            }
+        return doc.select("div.viewer-container img:not(noscript img)").mapIndexed { i, img ->
+            Page(i, doc.location(), img.imgAttr())
         }
     }
 
@@ -380,7 +407,6 @@ class LectorTmo :
             val regexAction = """form\.action\s*=\s*'(.+)'""".toRegex()
             val params = regexParams.find(data)
             val action = regexAction.find(data)?.groupValues?.get(1)?.unescapeUrl()
-
             if (params != null && action != null) {
                 val formBody = FormBody.Builder()
                     .add("uniqid", params.groupValues[1])
@@ -391,53 +417,41 @@ class LectorTmo :
         }
 
         if (script2 != null) {
-            val data = script2.data()
-            val regexRedirect = """window\.location\.replace\(['"](.+)['"]\)""".toRegex()
-            val url = regexRedirect.find(data)?.groupValues?.get(1)?.unescapeUrl()
-
-            if (url != null) {
-                return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
-            }
+            val url = """window\.location\.replace\(['"](.+)['"]\)""".toRegex()
+                .find(script2.data())?.groupValues?.get(1)?.unescapeUrl()
+            if (url != null) return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
         }
 
         if (script3 != null) {
-            val data = script3.data()
-            val regexRedirect = """redirectUrl\s*=\s*'(.+)'""".toRegex()
-            val url = regexRedirect.find(data)?.groupValues?.get(1)?.unescapeUrl()
-
-            if (url != null) {
-                return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
-            }
+            val url = """redirectUrl\s*=\s*'(.+)'""".toRegex()
+                .find(script3.data())?.groupValues?.get(1)?.unescapeUrl()
+            if (url != null) return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
         }
 
         if (script4 != null) {
             val url = script4.attr("value").unescapeUrl()
-
             return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
         }
 
         if (script5 != null) {
-            val data = script5.data()
-            val regexRedirect = """;[^.]location\.replace\(['"](.+)['"]\)""".toRegex()
-            val url = regexRedirect.find(data)?.groupValues?.get(1)?.unescapeUrl()
-
-            if (url != null) {
-                return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
-            }
+            val url = """;[^.]location\.replace\(['"](.+)['"]\)""".toRegex()
+                .find(script5.data())?.groupValues?.get(1)?.unescapeUrl()
+            if (url != null) return redirectToReadPage(client.newCall(GET(url, redirectHeaders)).execute().asJsoup())
         }
 
         return document
     }
 
-    private fun Element.imgAttr(): String = when {
-        this.hasAttr("data-src") -> this.attr("abs:data-src")
-        else -> this.attr("abs:src")
+    private fun Element.imgAttr(): String {
+        return if (this.hasAttr("data-src")) this.attr("abs:data-src") else this.attr("abs:src")
     }
 
-    private fun String.unescapeUrl(): String = if (this.startsWith("http:\\/\\/") || this.startsWith("https:\\/\\/")) {
-        this.replace("\\/", "/")
-    } else {
-        this
+    private fun String.unescapeUrl(): String {
+        return if (this.startsWith("http:\\/\\/") || this.startsWith("https:\\/\\/")) {
+            this.replace("\\/", "/")
+        } else {
+            this
+        }
     }
 
     override fun imageRequest(page: Page) = GET(
@@ -461,50 +475,46 @@ class LectorTmo :
         GenreList(getGenreList()),
     )
 
-    private class FilterBy :
-        UriPartFilter(
-            "Buscar por",
-            arrayOf(
-                Pair("Título", "title"),
-                Pair("Autor", "author"),
-                Pair("Compañia", "company"),
-            ),
-        )
+    private class FilterBy : UriPartFilter(
+        "Buscar por",
+        arrayOf(
+            Pair("Título", "title"),
+            Pair("Autor", "author"),
+            Pair("Compañia", "company"),
+        ),
+    )
 
-    class SortBy :
-        Filter.Sort(
-            "Ordenar por",
-            SORTABLES.map { it.first }.toTypedArray(),
-            Selection(0, false),
-        )
+    class SortBy : Filter.Sort(
+        "Ordenar por",
+        SORTABLES.map { it.first }.toTypedArray(),
+        Selection(0, false),
+    )
 
-    private class Types :
-        UriPartFilter(
-            "Filtrar por tipo",
-            arrayOf(
-                Pair("Ver todo", ""),
-                Pair("Manga", "manga"),
-                Pair("Manhua", "manhua"),
-                Pair("Manhwa", "manhwa"),
-                Pair("Novela", "novel"),
-                Pair("One shot", "one_shot"),
-                Pair("Doujinshi", "doujinshi"),
-                Pair("Oel", "oel"),
-            ),
-        )
+    private class Types : UriPartFilter(
+        "Filtrar por tipo",
+        arrayOf(
+            Pair("Ver todo", ""),
+            Pair("Manga", "manga"),
+            Pair("Manhua", "manhua"),
+            Pair("Manhwa", "manhwa"),
+            Pair("Novela", "novel"),
+            Pair("One shot", "one_shot"),
+            Pair("Doujinshi", "doujinshi"),
+            Pair("Oel", "oel"),
+        ),
+    )
 
-    private class Demography :
-        UriPartFilter(
-            "Filtrar por demografía",
-            arrayOf(
-                Pair("Ver todo", ""),
-                Pair("Seinen", "seinen"),
-                Pair("Shoujo", "shoujo"),
-                Pair("Shounen", "shounen"),
-                Pair("Josei", "josei"),
-                Pair("Kodomo", "kodomo"),
-            ),
-        )
+    private class Demography : UriPartFilter(
+        "Filtrar por demografía",
+        arrayOf(
+            Pair("Ver todo", ""),
+            Pair("Seinen", "seinen"),
+            Pair("Shoujo", "shoujo"),
+            Pair("Shounen", "shounen"),
+            Pair("Josei", "josei"),
+            Pair("Kodomo", "kodomo"),
+        ),
+    )
 
     private fun getContentTypeList() = listOf(
         ContentType("Webcomic", "webcomic"),
@@ -571,51 +581,132 @@ class LectorTmo :
 
     private fun getScanlatorPref(): Boolean = preferences.getBoolean(SCANLATOR_PREF, SCANLATOR_PREF_DEFAULT_VALUE)
 
-    private fun getSFWModePref(): Boolean = preferences.getBoolean(SFW_MODE_PREF, SFW_MODE_PREF_DEFAULT_VALUE)
-
     private fun getSaveLastCFUrlPref(): Boolean = preferences.getBoolean(SAVE_LAST_CF_URL_PREF, SAVE_LAST_CF_URL_PREF_DEFAULT_VALUE)
 
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
-        val sfwModePref = CheckBoxPreference(screen.context).apply {
-            key = SFW_MODE_PREF
-            title = SFW_MODE_PREF_TITLE
-            summary = SFW_MODE_PREF_SUMMARY
-            setDefaultValue(SFW_MODE_PREF_DEFAULT_VALUE)
+        val ctx = screen.context
+
+        fun checkBox(key: String, title: String, summary: String? = null, default: Boolean = false) =
+            CheckBoxPreference(ctx).apply {
+                this.key = key
+                this.title = title
+                summary?.let { this.summary = it }
+                setDefaultValue(default)
+            }
+
+        val nsfwGeneral = checkBox(
+            SFW_GENERAL,
+            "Ocultar todo el contenido NSFW",
+            "Bloquea automáticamente Ecchi, GL, BL, Harem y Trap",
+        )
+
+        val ecchi = checkBox(NSFW_ECCHI, "    • Ocultar Ecchi")
+        val gl = checkBox(NSFW_GIRLS_LOVE, "    • Ocultar Girls Love")
+        val bl = checkBox(NSFW_BOYS_LOVE, "    • Ocultar Boys Love")
+        val harem = checkBox(NSFW_HAREM, "    • Ocultar Harem")
+        val trap = checkBox(NSFW_TRAP, "    • Ocultar Trap")
+
+        val nsfwPrefs = listOf(ecchi, gl, bl, harem, trap)
+
+        fun updateState(allSfwEnabled: Boolean) {
+            nsfwPrefs.forEach { it.isEnabled = !allSfwEnabled }
+            if (allSfwEnabled && preferences.getString(NSFW_STATE_CACHE, null) == null) {
+                cacheNsfwState()
+                preferences.edit()
+                    .putBoolean(NSFW_ECCHI, false)
+                    .putBoolean(NSFW_GIRLS_LOVE, false)
+                    .putBoolean(NSFW_BOYS_LOVE, false)
+                    .putBoolean(NSFW_HAREM, false)
+                    .putBoolean(NSFW_TRAP, false)
+                    .apply()
+            } else {
+                restoreNsfwState()
+            }
         }
 
-        val scanlatorPref = CheckBoxPreference(screen.context).apply {
-            key = SCANLATOR_PREF
-            title = SCANLATOR_PREF_TITLE
-            summary = SCANLATOR_PREF_SUMMARY
-            setDefaultValue(SCANLATOR_PREF_DEFAULT_VALUE)
+        updateState(isSfwEnabled())
+
+        nsfwGeneral.setOnPreferenceChangeListener { _, newValue ->
+            updateState(newValue as Boolean)
+            true
         }
 
-        val saveLastCFUrlPreference = CheckBoxPreference(screen.context).apply {
-            key = SAVE_LAST_CF_URL_PREF
-            title = SAVE_LAST_CF_URL_PREF_TITLE
-            summary = SAVE_LAST_CF_URL_PREF_SUMMARY
-            setDefaultValue(SAVE_LAST_CF_URL_PREF_DEFAULT_VALUE)
-        }
+        val scanlatorPref = checkBox(
+            SCANLATOR_PREF,
+            SCANLATOR_PREF_TITLE,
+            SCANLATOR_PREF_SUMMARY,
+            SCANLATOR_PREF_DEFAULT_VALUE,
+        )
 
-        screen.addPreference(sfwModePref)
+        val saveLastCFUrlPreference = checkBox(
+            SAVE_LAST_CF_URL_PREF,
+            SAVE_LAST_CF_URL_PREF_TITLE,
+            SAVE_LAST_CF_URL_PREF_SUMMARY,
+            SAVE_LAST_CF_URL_PREF_DEFAULT_VALUE,
+        )
+
+        screen.addPreference(nsfwGeneral)
+        nsfwPrefs.forEach(screen::addPreference)
         screen.addPreference(scanlatorPref)
         screen.addPreference(saveLastCFUrlPreference)
     }
 
+    private fun cacheNsfwState() {
+        val state = NsfwState(
+            ecchi = getNsfwEcchi(),
+            girlsLove = getNsfwGirlsLove(),
+            boysLove = getNsfwBoysLove(),
+            harem = getNsfwHarem(),
+            trap = getNsfwTrap(),
+        )
+        preferences.edit()
+            .putString(NSFW_STATE_CACHE, json.encodeToString(state))
+            .apply()
+    }
+
+    private fun restoreNsfwState() {
+        val serialized = preferences.getString(NSFW_STATE_CACHE, null) ?: return
+        val state = runCatching { json.decodeFromString<NsfwState>(serialized) }.getOrNull() ?: return
+        preferences.edit()
+            .putBoolean(NSFW_ECCHI, state.ecchi)
+            .putBoolean(NSFW_GIRLS_LOVE, state.girlsLove)
+            .putBoolean(NSFW_BOYS_LOVE, state.boysLove)
+            .putBoolean(NSFW_HAREM, state.harem)
+            .putBoolean(NSFW_TRAP, state.trap)
+            .remove(NSFW_STATE_CACHE)
+            .apply()
+    }
+
+    private fun isSfwEnabled() = getSfwGeneral()
+
+    private fun getSfwGeneral() = preferences.getBoolean(SFW_GENERAL, false)
+
+    private fun getNsfwEcchi() = preferences.getBoolean(NSFW_ECCHI, false)
+
+    private fun getNsfwGirlsLove() = preferences.getBoolean(NSFW_GIRLS_LOVE, false)
+
+    private fun getNsfwBoysLove() = preferences.getBoolean(NSFW_BOYS_LOVE, false)
+
+    private fun getNsfwHarem() = preferences.getBoolean(NSFW_HAREM, false)
+
+    private fun getNsfwTrap() = preferences.getBoolean(NSFW_TRAP, false)
+
     companion object {
-        val DIRPATH_REGEX = """var\s+dirPath\s*=\s*'(.*?)'\s*;""".toRegex()
-        val IMAGES_REGEX = """var\s+images\s*=.*\[(.*?)\]\s*'\s*\)\s*;""".toRegex()
+        private val DIRPATH_REGEX = """var\s+dirPath\s*=\s*'(.*?)'\s*;""".toRegex()
+        private val IMAGES_REGEX = """var\s+images\s*=.*\[(.*?)\]\s*'\s*\)\s*;""".toRegex()
 
         private const val SCANLATOR_PREF = "scanlatorPref"
         private const val SCANLATOR_PREF_TITLE = "Mostrar todos los scanlator"
         private const val SCANLATOR_PREF_SUMMARY = "Se mostraran capítulos repetidos pero con diferentes Scanlators"
         private const val SCANLATOR_PREF_DEFAULT_VALUE = true
 
-        private const val SFW_MODE_PREF = "SFWModePref"
-        private const val SFW_MODE_PREF_TITLE = "Ocultar contenido NSFW"
-        private const val SFW_MODE_PREF_SUMMARY = "Ocultar el contenido erótico (puede que aún activandolo se sigan mostrando portadas o series NSFW). Ten en cuenta que al activarlo se ignoran filtros al explorar y buscar.\nLos filtros ignorados son: Filtrar por tipo de contenido (Erotico) y el Filtrar por generos: Ecchi, Boys Love, Girls Love, Harem y Trap."
-        private const val SFW_MODE_PREF_DEFAULT_VALUE = false
-        private val SFW_MODE_PREF_EXCLUDE_GENDERS = listOf("6", "17", "18", "19")
+        private const val SFW_GENERAL = "pref_sfw_general"
+        private const val NSFW_ECCHI = "pref_nsfw_ecchi"
+        private const val NSFW_GIRLS_LOVE = "pref_nsfw_girls_love"
+        private const val NSFW_BOYS_LOVE = "pref_nsfw_boys_love"
+        private const val NSFW_HAREM = "pref_nsfw_harem"
+        private const val NSFW_TRAP = "pref_nsfw_trap"
+        private const val NSFW_STATE_CACHE = "pref_nsfw_state_cache"
 
         private const val SAVE_LAST_CF_URL_PREF = "saveLastCFUrlPreference"
         private const val SAVE_LAST_CF_URL_PREF_TITLE = "Guardar la última URL con error de Cloudflare"
@@ -635,6 +726,6 @@ class LectorTmo :
         )
 
         private val CF_ERROR_CODES = listOf(403, 503)
-        private val CF_SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
+        private val CF_SERVER_CHECK = listOf("cloudflare-nginx", "cloudflare")
     }
 }
