@@ -74,10 +74,15 @@ class MangaTV :
 
     override fun popularMangaRequest(page: Int) = buildListRequest(page, order = "popular")
 
+    override fun popularMangaNextPageSelector() = "a[rel=next]"
+
     override fun latestUpdatesRequest(page: Int) = buildListRequest(page, order = "update")
+
+    override fun latestUpdatesNextPageSelector() = "a[rel=next]"
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList) = buildListRequest(page, query = query, filters = filters)
 
+    override fun searchMangaNextPageSelector() = "a[rel=next]"
     /* ============================
      * PAGES
      * ============================ */
