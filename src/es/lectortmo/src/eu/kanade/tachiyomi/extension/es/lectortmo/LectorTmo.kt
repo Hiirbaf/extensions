@@ -171,21 +171,19 @@ class LectorTmo :
 
     override fun latestUpdatesFromElement(element: Element) = popularMangaFromElement(element)
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
-        return if (query.startsWith(PREFIX_SLUG_SEARCH)) {
-            val realQuery = query.removePrefix(PREFIX_SLUG_SEARCH)
-            safeClient.newCall(searchMangaBySlugRequest(realQuery))
-                .asObservableSuccess()
-                .map { response ->
-                    val details = mangaDetailsParse(response)
-                    details.url = "/$PREFIX_LIBRARY/$realQuery"
-                    MangasPage(listOf(details), false)
-                }
-        } else {
-            safeClient.newCall(searchMangaRequest(page, query, filters))
-                .asObservableSuccess()
-                .map { searchMangaParse(it) }
-        }
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = if (query.startsWith(PREFIX_SLUG_SEARCH)) {
+        val realQuery = query.removePrefix(PREFIX_SLUG_SEARCH)
+        safeClient.newCall(searchMangaBySlugRequest(realQuery))
+            .asObservableSuccess()
+            .map { response ->
+                val details = mangaDetailsParse(response)
+                details.url = "/$PREFIX_LIBRARY/$realQuery"
+                MangasPage(listOf(details), false)
+            }
+    } else {
+        safeClient.newCall(searchMangaRequest(page, query, filters))
+            .asObservableSuccess()
+            .map { searchMangaParse(it) }
     }
 
     private fun searchMangaBySlugRequest(slug: String) = GET("$baseUrl/$PREFIX_LIBRARY/$slug", tmoHeaders)
@@ -256,11 +254,9 @@ class LectorTmo :
         return super.getMangaUrl(manga)
     }
 
-    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
-        return safeClient.newCall(mangaDetailsRequest(manga))
-            .asObservableSuccess()
-            .map { mangaDetailsParse(it).apply { initialized = true } }
-    }
+    override fun fetchMangaDetails(manga: SManga): Observable<SManga> = safeClient.newCall(mangaDetailsRequest(manga))
+        .asObservableSuccess()
+        .map { mangaDetailsParse(it).apply { initialized = true } }
 
     override fun mangaDetailsRequest(manga: SManga) = GET(baseUrl + manga.url, tmoHeaders)
 
@@ -296,11 +292,9 @@ class LectorTmo :
         return super.getChapterUrl(chapter)
     }
 
-    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
-        return safeClient.newCall(chapterListRequest(manga))
-            .asObservableSuccess()
-            .map { chapterListParse(it) }
-    }
+    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = safeClient.newCall(chapterListRequest(manga))
+        .asObservableSuccess()
+        .map { chapterListParse(it) }
 
     override fun chapterListRequest(manga: SManga) = mangaDetailsRequest(manga)
 
@@ -343,15 +337,11 @@ class LectorTmo :
         } ?: 0
     }
 
-    private fun parseChapterDate(date: String): Long {
-        return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(date)?.time ?: 0
-    }
+    private fun parseChapterDate(date: String): Long = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(date)?.time ?: 0
 
-    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
-        return safeClient.newCall(pageListRequest(chapter))
-            .asObservableSuccess()
-            .map { pageListParse(it) }
-    }
+    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> = safeClient.newCall(pageListRequest(chapter))
+        .asObservableSuccess()
+        .map { pageListParse(it) }
 
     override fun pageListRequest(chapter: SChapter) = GET(chapter.url, tmoHeaders)
 
@@ -440,16 +430,12 @@ class LectorTmo :
         return document
     }
 
-    private fun Element.imgAttr(): String {
-        return if (this.hasAttr("data-src")) this.attr("abs:data-src") else this.attr("abs:src")
-    }
+    private fun Element.imgAttr(): String = if (this.hasAttr("data-src")) this.attr("abs:data-src") else this.attr("abs:src")
 
-    private fun String.unescapeUrl(): String {
-        return if (this.startsWith("http:\\/\\/") || this.startsWith("https:\\/\\/")) {
-            this.replace("\\/", "/")
-        } else {
-            this
-        }
+    private fun String.unescapeUrl(): String = if (this.startsWith("http:\\/\\/") || this.startsWith("https:\\/\\/")) {
+        this.replace("\\/", "/")
+    } else {
+        this
     }
 
     override fun imageRequest(page: Page) = GET(
