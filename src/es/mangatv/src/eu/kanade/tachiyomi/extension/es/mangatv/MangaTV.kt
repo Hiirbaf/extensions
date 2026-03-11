@@ -28,21 +28,20 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+    /* ============================
+     * REQUEST BUILDER
+     * ============================ */
+
+    private fun buildListRequest(page: Int, order: String? = null, query: String? = null, filters: FilterList? = null): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
             .addQueryParameter("page", page.toString())
 
-        if (query.isNotBlank()) {
-            url.addQueryParameter("s", query)
-        }
+        order?.let { url.addQueryParameter("order", it) }
+        query?.takeIf { it.isNotBlank() }?.let { url.addQueryParameter("s", it) }
 
-        filters.forEach { filter ->
+        filters?.forEach { filter ->
             when (filter) {
-                is OrderFilter -> {
-                    val values = listOf("popular", "update", "new", "title")
-                    url.addQueryParameter("order", values[filter.state])
-                }
 
                 is StatusFilter -> {
                     val values = listOf("", "ongoing", "completed")
@@ -57,12 +56,32 @@ class MangaTV :
                         url.addQueryParameter("type", it)
                     }
                 }
+
+                is OrderFilter -> {
+                    val values = listOf("popular", "update", "new", "title")
+                    url.addQueryParameter("order", values[filter.state])
+                }
+
                 else -> {}
             }
         }
 
         return GET(url.build(), headers)
     }
+
+    /* ============================
+     * POPULAR / LATEST
+     * ============================ */
+
+    override fun popularMangaRequest(page: Int) = buildListRequest(page, order = "popular")
+
+    override fun latestUpdatesRequest(page: Int) = buildListRequest(page, order = "update")
+
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList) = buildListRequest(page, query = query, filters = filters)
+
+    /* ============================
+     * PAGES
+     * ============================ */
 
     override fun pageListParse(document: Document): List<Page> {
         val unpacked = document.selectFirst("script:containsData(eval)")!!.data().let(Unpacker::unpack)
@@ -78,6 +97,10 @@ class MangaTV :
             Page(i, document.location(), "https:$decoded")
         }
     }
+
+    /* ============================
+     * CHAPTER PARSER
+     * ============================ */
 
     override fun chapterFromElement(element: Element): SChapter {
         val chapter = SChapter.create()
@@ -102,6 +125,10 @@ class MangaTV :
         return chapter
     }
 
+    /* ============================
+     * FILTERS
+     * ============================ */
+
     override fun getFilterList() = FilterList(
         Filter.Header("Filtros"),
         OrderFilter(),
@@ -109,38 +136,20 @@ class MangaTV :
         TypeFilter(),
     )
 
-    private class OrderFilter :
-        Filter.Select<String>(
-            "Ordenar",
-            arrayOf(
-                "Popular",
-                "Actualizado",
-                "Nuevo",
-                "A-Z",
-            ),
-        )
+    private class OrderFilter : Filter.Select<String>(
+        "Ordenar",
+        arrayOf("Popular", "Actualizado", "Nuevo", "A-Z"),
+    )
 
-    private class StatusFilter :
-        Filter.Select<String>(
-            "Estado",
-            arrayOf(
-                "Todos",
-                "En emisión",
-                "Completo",
-            ),
-        )
+    private class StatusFilter : Filter.Select<String>(
+        "Estado",
+        arrayOf("Todos", "En emisión", "Completo"),
+    )
 
-    private class TypeFilter :
-        Filter.Select<String>(
-            "Tipo",
-            arrayOf(
-                "Todos",
-                "Manga",
-                "Manhwa",
-                "Manhua",
-                "Comic",
-            ),
-        )
+    private class TypeFilter : Filter.Select<String>(
+        "Tipo",
+        arrayOf("Todos", "Manga", "Manhwa", "Manhua", "Comic"),
+    )
 
     companion object {
         private val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
