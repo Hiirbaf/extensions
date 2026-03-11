@@ -80,8 +80,7 @@ class MangaTV :
 
         chapter.setUrlWithoutDomain(element.select("a").attr("href"))
 
-        chapter.date_upload =
-            element.selectFirst(".chapterdate")?.text()?.let { parseChapterDate(it) } ?: 0L
+        chapter.date_upload = element.selectFirst(".chapterdate")?.text().parseChapterDate()
 
         return chapter
     }
