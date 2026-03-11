@@ -314,7 +314,7 @@ class LectorTmo :
             if (getScanlatorPref()) {
                 chapterScanlator.forEach { chapters.add(chapterFromElement(it, chapterName)) }
             } else {
-                chapterScanlator.first().let { chapters.add(chapterFromElement(it, chapterName)) }
+                chapterScanlator.firstOrNull()?.let { chapters.add(chapterFromElement(it, chapterName)) }
             }
         }
         return chapters
@@ -596,7 +596,7 @@ class LectorTmo :
         val nsfwPrefs = listOf(ecchi, gl, bl, harem, trap)
 
         fun updateState(allSfwEnabled: Boolean) {
-            nsfwPrefs.forEach { it.isEnabled = !allSfwEnabled }
+            nsfwPrefs.forEach { it.setEnabled(!allSfwEnabled) }
             if (allSfwEnabled && preferences.getString(NSFW_STATE_CACHE, null) == null) {
                 cacheNsfwState()
                 preferences.edit()
