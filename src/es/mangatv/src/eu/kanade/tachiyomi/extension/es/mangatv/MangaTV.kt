@@ -2,6 +2,10 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
+import eu.kanade.tachiyomi.multisrc.mangathemesia.GenreFilter
+import eu.kanade.tachiyomi.multisrc.mangathemesia.OrderByFilter
+import eu.kanade.tachiyomi.multisrc.mangathemesia.StatusFilter
+import eu.kanade.tachiyomi.multisrc.mangathemesia.TypeFilter
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
