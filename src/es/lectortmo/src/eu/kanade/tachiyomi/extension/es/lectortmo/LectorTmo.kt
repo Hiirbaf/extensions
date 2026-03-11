@@ -574,13 +574,12 @@ class LectorTmo :
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
         val ctx = screen.context
 
-        fun checkBox(key: String, title: String, summary: String? = null, default: Boolean = false) =
-            CheckBoxPreference(ctx).apply {
-                this.key = key
-                this.title = title
-                summary?.let { this.summary = it }
-                setDefaultValue(default)
-            }
+        fun checkBox(key: String, title: String, summary: String? = null, default: Boolean = false) = CheckBoxPreference(ctx).apply {
+            this.key = key
+            this.title = title
+            summary?.let { this.summary = it }
+            setDefaultValue(default)
+        }
 
         val nsfwGeneral = checkBox(
             SFW_GENERAL,
