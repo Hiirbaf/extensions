@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
+import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesiaFilters.OrderByFilter
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
@@ -18,77 +19,84 @@ import java.util.Locale
 
 class MangaTV :
     MangaThemesia(
-        "Manga  TV",
+        "Manga TV",
         "https://mangatv.net",
         "es",
         mangaUrlDirectory = "/lista",
         dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT),
     ) {
 
+    override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
+
+    override val popularFilter = FilterList(OrderByFilter("popular"))
+    override val latestFilter = FilterList(OrderByFilter("update"))
+
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
             .addQueryParameter("page", page.toString())
 
-        if (query.isNotBlank()) {
-            url.addQueryParameter("s", query)
+        if (query.isNotBlank()) url.addQueryParameter("s", query)
+
+        filters.forEach {
+            when (it) {
+                is OrderByFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("order", v) }
+                is GenreFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("genre", v) }
+                is TypeFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("type", v) }
+                is StatusFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("status", v) }
+            }
         }
 
         return GET(url.build(), headers)
     }
 
-    override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
-
     override fun pageListParse(document: Document): List<Page> {
-        val unpackedScript = document.selectFirst("script:containsData(eval)")!!.data()
-            .let(Unpacker::unpack)
+        val unpacked = document.selectFirst("script:containsData(eval)")!!.data().let(Unpacker::unpack)
 
-        val imageListJson = JSON_IMAGE_LIST_REGEX.find(unpackedScript)?.destructured?.toList()?.get(0).orEmpty()
-        val imageList = try {
-            json.parseToJsonElement(imageListJson.replace(TRAILING_COMMA_REGEX, "]")).jsonArray
-        } catch (_: IllegalArgumentException) {
-            emptyList()
-        }
-        return imageList.mapIndexed { i, jsonEl ->
-            val encodedLink = jsonEl.jsonPrimitive.content
-            val decodedLink = String(Base64.decode(encodedLink, Base64.DEFAULT))
-            Page(i, document.location(), "https:$decodedLink")
+        val images = JSON_IMAGE_LIST_REGEX.find(unpacked)
+            ?.groupValues?.getOrNull(1)
+            ?.replace(TRAILING_COMMA_REGEX, "]")
+            ?.let { runCatching { json.parseToJsonElement(it).jsonArray }.getOrNull() }
+            ?: return emptyList()
+
+        return images.mapIndexed { i, el ->
+            val decoded = String(Base64.decode(el.jsonPrimitive.content, Base64.DEFAULT))
+            Page(i, document.location(), "https:$decoded")
         }
     }
 
     override fun chapterFromElement(element: Element): SChapter {
         val chapter = SChapter.create()
-
         val spans = element.select(".chapternum")
 
         val chapterText = spans.getOrNull(0)?.text().orEmpty()
         val infoText = spans.getOrNull(1)?.text().orEmpty()
 
         chapter.name = chapterText
-
-        chapter.chapter_number = chapterText
-            .substringAfter("Capítulo", "")
-            .trim()
-            .replace(",", ".")
-            .toFloatOrNull() ?: -1f
+        chapter.chapter_number = chapterText.substringAfter("Capítulo", "")
+            .trim().replace(",", ".").toFloatOrNull() ?: -1f
 
         infoText.substringAfter("|", "")
             .replace("Fansub", "")
             .trim()
-            .takeIf { it.isNotEmpty() }
+            .takeIf(String::isNotEmpty)
             ?.let { chapter.scanlator = it }
 
-        chapter.setUrlWithoutDomain(element.select("a").attr("href"))
-
+        chapter.setUrlWithoutDomain(element.selectFirst("a")!!.attr("href"))
         chapter.date_upload = element.selectFirst(".chapterdate")?.text().parseChapterDate()
 
         return chapter
     }
 
-    // TODO: add demografia, order, tipos, genre
-    override fun getFilterList() = FilterList()
+    override fun getFilterList() = FilterList(
+        Filter.Header("Filtros"),
+        OrderByFilter(),
+        StatusFilter(),
+        TypeFilter(),
+        GenreFilter(),
+    )
 
     companion object {
-        val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
+        private val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
     }
 }
