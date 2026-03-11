@@ -459,46 +459,50 @@ class LectorTmo :
         GenreList(getGenreList()),
     )
 
-    private class FilterBy : UriPartFilter(
-        "Buscar por",
-        arrayOf(
-            Pair("Título", "title"),
-            Pair("Autor", "author"),
-            Pair("Compañia", "company"),
-        ),
-    )
+    private class FilterBy :
+        UriPartFilter(
+            "Buscar por",
+            arrayOf(
+                Pair("Título", "title"),
+                Pair("Autor", "author"),
+                Pair("Compañia", "company"),
+            ),
+        )
 
-    class SortBy : Filter.Sort(
-        "Ordenar por",
-        SORTABLES.map { it.first }.toTypedArray(),
-        Selection(0, false),
-    )
+    class SortBy :
+        Filter.Sort(
+            "Ordenar por",
+            SORTABLES.map { it.first }.toTypedArray(),
+            Selection(0, false),
+        )
 
-    private class Types : UriPartFilter(
-        "Filtrar por tipo",
-        arrayOf(
-            Pair("Ver todo", ""),
-            Pair("Manga", "manga"),
-            Pair("Manhua", "manhua"),
-            Pair("Manhwa", "manhwa"),
-            Pair("Novela", "novel"),
-            Pair("One shot", "one_shot"),
-            Pair("Doujinshi", "doujinshi"),
-            Pair("Oel", "oel"),
-        ),
-    )
+    private class Types :
+        UriPartFilter(
+            "Filtrar por tipo",
+            arrayOf(
+                Pair("Ver todo", ""),
+                Pair("Manga", "manga"),
+                Pair("Manhua", "manhua"),
+                Pair("Manhwa", "manhwa"),
+                Pair("Novela", "novel"),
+                Pair("One shot", "one_shot"),
+                Pair("Doujinshi", "doujinshi"),
+                Pair("Oel", "oel"),
+            ),
+        )
 
-    private class Demography : UriPartFilter(
-        "Filtrar por demografía",
-        arrayOf(
-            Pair("Ver todo", ""),
-            Pair("Seinen", "seinen"),
-            Pair("Shoujo", "shoujo"),
-            Pair("Shounen", "shounen"),
-            Pair("Josei", "josei"),
-            Pair("Kodomo", "kodomo"),
-        ),
-    )
+    private class Demography :
+        UriPartFilter(
+            "Filtrar por demografía",
+            arrayOf(
+                Pair("Ver todo", ""),
+                Pair("Seinen", "seinen"),
+                Pair("Shoujo", "shoujo"),
+                Pair("Shounen", "shounen"),
+                Pair("Josei", "josei"),
+                Pair("Kodomo", "kodomo"),
+            ),
+        )
 
     private fun getContentTypeList() = listOf(
         ContentType("Webcomic", "webcomic"),
