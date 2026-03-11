@@ -1,11 +1,7 @@
 package eu.kanade.tachiyomi.extension.es.mangatv
 
 import android.util.Base64
-import eu.kanade.tachiyomi.multisrc.mangathemesia.GenreFilter
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
-import eu.kanade.tachiyomi.multisrc.mangathemesia.OrderByFilter
-import eu.kanade.tachiyomi.multisrc.mangathemesia.StatusFilter
-import eu.kanade.tachiyomi.multisrc.mangathemesia.TypeFilter
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
@@ -32,22 +28,37 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
-    override val popularFilter = FilterList(OrderByFilter("popular"))
-    override val latestFilter = FilterList(OrderByFilter("update"))
-
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
             .addQueryParameter("page", page.toString())
 
-        if (query.isNotBlank()) url.addQueryParameter("s", query)
+        if (query.isNotBlank()) {
+            url.addQueryParameter("s", query)
+        }
 
-        filters.forEach {
-            when (it) {
-                is OrderByFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("order", v) }
-                is GenreFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("genre", v) }
-                is TypeFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("type", v) }
-                is StatusFilter -> it.toUriPart().takeIf(String::isNotEmpty)?.let { v -> url.addQueryParameter("status", v) }
+        filters.forEach { filter ->
+            when (filter) {
+
+                is OrderFilter -> {
+                    val values = listOf("popular", "update", "new", "title")
+                    url.addQueryParameter("order", values[filter.state])
+                }
+
+                is StatusFilter -> {
+                    val values = listOf("", "ongoing", "completed")
+                    values[filter.state].takeIf { it.isNotEmpty() }?.let {
+                        url.addQueryParameter("status", it)
+                    }
+                }
+
+                is TypeFilter -> {
+                    val values = listOf("", "manga", "manhwa", "manhua", "comic")
+                    values[filter.state].takeIf { it.isNotEmpty() }?.let {
+                        url.addQueryParameter("type", it)
+                    }
+                }
+                else -> {}
             }
         }
 
@@ -94,10 +105,39 @@ class MangaTV :
 
     override fun getFilterList() = FilterList(
         Filter.Header("Filtros"),
-        OrderByFilter(),
+        OrderFilter(),
         StatusFilter(),
         TypeFilter(),
-        GenreFilter(),
+    )
+
+    private class OrderFilter : Filter.Select<String>(
+        "Ordenar",
+        arrayOf(
+            "Popular",
+            "Actualizado",
+            "Nuevo",
+            "A-Z",
+        ),
+    )
+
+    private class StatusFilter : Filter.Select<String>(
+        "Estado",
+        arrayOf(
+            "Todos",
+            "En emisión",
+            "Completo",
+        ),
+    )
+
+    private class TypeFilter : Filter.Select<String>(
+        "Tipo",
+        arrayOf(
+            "Todos",
+            "Manga",
+            "Manhwa",
+            "Manhua",
+            "Comic",
+        ),
     )
 
     companion object {
