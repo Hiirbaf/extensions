@@ -13,4 +13,4 @@ class MangaTV :
     override val client = super.client.newBuilder()
         .rateLimit(3)
         .build()
-    }
+}
