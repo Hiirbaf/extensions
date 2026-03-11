@@ -42,7 +42,6 @@ class MangaTV :
 
         filters?.forEach { filter ->
             when (filter) {
-
                 is StatusFilter -> {
                     val values = listOf("", "ongoing", "completed")
                     values[filter.state].takeIf { it.isNotEmpty() }?.let {
@@ -136,20 +135,23 @@ class MangaTV :
         TypeFilter(),
     )
 
-    private class OrderFilter : Filter.Select<String>(
-        "Ordenar",
-        arrayOf("Popular", "Actualizado", "Nuevo", "A-Z"),
-    )
+    private class OrderFilter :
+        Filter.Select<String>(
+            "Ordenar",
+            arrayOf("Popular", "Actualizado", "Nuevo", "A-Z"),
+        )
 
-    private class StatusFilter : Filter.Select<String>(
-        "Estado",
-        arrayOf("Todos", "En emisión", "Completo"),
-    )
+    private class StatusFilter :
+        Filter.Select<String>(
+            "Estado",
+            arrayOf("Todos", "En emisión", "Completo"),
+        )
 
-    private class TypeFilter : Filter.Select<String>(
-        "Tipo",
-        arrayOf("Todos", "Manga", "Manhwa", "Manhua", "Comic"),
-    )
+    private class TypeFilter :
+        Filter.Select<String>(
+            "Tipo",
+            arrayOf("Todos", "Manga", "Manhwa", "Manhua", "Comic"),
+        )
 
     companion object {
         private val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
