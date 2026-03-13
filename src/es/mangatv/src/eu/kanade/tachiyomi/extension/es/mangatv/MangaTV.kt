@@ -3,8 +3,6 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.source.model.Filter
-import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import keiyoushi.lib.unpacker.Unpacker
 import kotlinx.serialization.json.jsonArray
@@ -51,74 +49,7 @@ class MangaTV :
         return GET(url.build(), headers)
     }
 
-    // TODO: add demografia, order, tipos, genre
-    override fun getFilterList() = FilterList(
-
-        DemographyFilter(
-            arrayOf(
-                "Todos",
-                "Shounen",
-                "Shoujo",
-                "Seinen",
-                "Josei",
-            ),
-        ),
-
-        TypeFilter(
-            listOf(
-                "Manga",
-                "Manhwa",
-                "Manhua",
-                "Novela",
-                "OEL",
-            ),
-        ),
-
-        GenreFilter(
-            listOf(
-                "Acción",
-                "Aventura",
-                "Comedia",
-                "Drama",
-                "Fantasía",
-                "Romance",
-                "Slice of Life",
-                "Harem",
-                "Isekai",
-                "Ciencia Ficción",
-            ),
-        ),
-
-        OrderFilter(),
-    )
-
     companion object {
         val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
     }
 }
-
-private class GenreFilter(genres: List<String>) :
-    Filter.Group<Filter.CheckBox>(
-        "Géneros",
-        genres.map { Filter.CheckBox(it) },
-    )
-
-private class TypeFilter(types: List<String>) :
-    Filter.Group<Filter.CheckBox>(
-        "Tipo",
-        types.map { Filter.CheckBox(it) },
-    )
-
-private class DemographyFilter(demographies: Array<String>) : Filter.Select("Demografía", demographies)
-
-private class OrderFilter :
-    Filter.Select(
-        "Ordenar",
-        arrayOf(
-            "Por defecto",
-            "Popularidad",
-            "Actualizado",
-            "Título",
-            "Rating",
-        ),
-    )
