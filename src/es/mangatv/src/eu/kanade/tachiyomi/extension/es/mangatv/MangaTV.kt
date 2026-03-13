@@ -25,26 +25,6 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
-    override fun popularMangaRequest(page: Int): Request {
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("order", "popular")
-            .addQueryParameter("page", page.toString())
-            .build()
-
-        return GET(url, headers)
-    }
-
-    override fun latestUpdatesRequest(page: Int): Request {
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("order", "latest")
-            .addQueryParameter("page", page.toString())
-            .build()
-
-        return GET(url, headers)
-    }
-
     override fun pageListParse(document: Document): List<Page> {
         val unpackedScript = document.selectFirst("script:containsData(eval)")!!.data()
             .let(Unpacker::unpack)
@@ -67,6 +47,33 @@ class MangaTV :
             .addPathSegment(mangaUrlDirectory.substring(1))
             .addQueryParameter("s", query)
             .addQueryParameter("page", page.toString())
+
+        filters.forEach { filter ->
+            when (filter) {
+                is AuthorFilter -> url.addQueryParameter("author", filter.state)
+                is YearFilter -> url.addQueryParameter("yearx", filter.state)
+                is StatusFilter -> url.addQueryParameter("status", filter.selectedValue())
+                is TypeFilter -> url.addQueryParameter("type", filter.selectedValue())
+                is OrderByFilter -> url.addQueryParameter("order", filter.selectedValue())
+
+                is GenreListFilter -> {
+                    filter.state
+                        .filter { it.state != Filter.TriState.STATE_IGNORE }
+                        .forEach {
+                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) "-${it.value}" else it.value
+                            url.addQueryParameter("genre[]", value)
+                        }
+                }
+
+                is ProjectFilter -> {
+                    if (filter.selectedValue() == "project-filter-on") {
+                        url.setPathSegment(0, projectPageString.substring(1))
+                    }
+                }
+            }
+        }
+
+        url.addPathSegment("")
         return GET(url.build(), headers)
     }
 
