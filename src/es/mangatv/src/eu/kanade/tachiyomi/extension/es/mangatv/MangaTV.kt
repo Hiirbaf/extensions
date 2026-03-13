@@ -71,6 +71,25 @@ class MangaTV :
     override fun latestUpdatesNextPageSelector() = "a[rel=next]"
     override fun searchMangaNextPageSelector() = "a[rel=next]"
 
+    override fun mangaDetailsParse(document: Document): SManga {
+        val manga = super.mangaDetailsParse(document)
+
+        val extraGenres = mutableListOf<String>()
+
+        document.select("div:contains(Tipo) a").mapTo(extraGenres) { it.text() }
+
+        document.select("div:contains(Demografía) a").mapTo(extraGenres) { it.text() }
+
+        if (extraGenres.isNotEmpty()) {
+            manga.genre = listOfNotNull(
+            manga.genre,
+                extraGenres.joinToString(", ")
+            ).joinToString(", ")
+        }
+
+        return manga
+    }
+
     /* ================= PAGE LIST ================= */
 
     override fun pageListParse(document: Document): List<Page> {
