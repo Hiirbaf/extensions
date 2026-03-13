@@ -61,8 +61,11 @@ class MangaTV :
                     filter.state
                         .filter { it.state != Filter.TriState.STATE_IGNORE }
                         .forEach {
-                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE)
-                                "-${it.value}" else it.value
+                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) {
+                                "-${it.value}"
+                            } else {
+                                it.value
+                            }
                             url.addQueryParameter("genre[]", value)
                         }
                 }
