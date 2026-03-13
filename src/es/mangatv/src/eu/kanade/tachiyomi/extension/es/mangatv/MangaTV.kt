@@ -40,7 +40,6 @@ class MangaTV :
 
         filters?.forEach { filter ->
             when (filter) {
-
                 is TypeFilter -> {
                     val values = listOf("", "manga", "manhwa", "manhua", "One-Shot")
                     values[filter.state].takeIf { it.isNotEmpty() }?.let {
