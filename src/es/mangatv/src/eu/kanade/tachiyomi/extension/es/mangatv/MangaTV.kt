@@ -40,22 +40,16 @@ class MangaTV :
 
         filters?.forEach { filter ->
             when (filter) {
-                is StatusFilter -> {
-                    val values = listOf("", "ongoing", "completed")
-                    values[filter.state].takeIf { it.isNotEmpty() }?.let {
-                        url.addQueryParameter("status", it)
-                    }
-                }
 
                 is TypeFilter -> {
-                    val values = listOf("", "manga", "manhwa", "manhua", "comic")
+                    val values = listOf("", "manga", "manhwa", "manhua", "One-Shot")
                     values[filter.state].takeIf { it.isNotEmpty() }?.let {
-                        url.addQueryParameter("type", it)
+                        url.addQueryParameter("tipos[]", it)
                     }
                 }
 
                 is OrderFilter -> {
-                    val values = listOf("popular", "update", "new", "title")
+                    val values = listOf("popular", "update", "latest", "title")
                     url.addQueryParameter("order", values[filter.state])
                 }
 
@@ -136,19 +130,13 @@ class MangaTV :
     private class OrderFilter :
         Filter.Select<String>(
             "Ordenar",
-            arrayOf("Popular", "Actualizado", "Nuevo", "A-Z"),
-        )
-
-    private class StatusFilter :
-        Filter.Select<String>(
-            "Estado",
-            arrayOf("Todos", "En emisión", "Completo"),
+            arrayOf("Popular", "Actualizado", "Últimos", "A-Z"),
         )
 
     private class TypeFilter :
         Filter.Select<String>(
             "Tipo",
-            arrayOf("Todos", "Manga", "Manhwa", "Manhua", "Comic"),
+            arrayOf("Todos", "Manga", "Manhwa", "Manhua", "One-Shot"),
         )
 
     companion object {
