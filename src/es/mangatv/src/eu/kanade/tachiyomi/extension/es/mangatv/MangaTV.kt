@@ -122,7 +122,6 @@ class MangaTV :
     override fun getFilterList() = FilterList(
         Filter.Header("Filtros"),
         OrderFilter(),
-        StatusFilter(),
         TypeFilter(),
     )
 
