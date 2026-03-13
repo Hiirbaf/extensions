@@ -6,18 +6,20 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import keiyoushi.lib.unpacker.Unpacker
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class MangaTV :
     MangaThemesia(
-        "Manga  TV",
+        "Manga TV",
         "https://mangatv.net",
         "es",
         mangaUrlDirectory = "/lista",
@@ -26,65 +28,131 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
-    override fun pageListParse(document: Document): List<Page> {
-        val unpackedScript = document.selectFirst("script:containsData(eval)")!!.data()
-            .let(Unpacker::unpack)
+    /* ================= REQUEST BUILDER ================= */
 
-        val imageListJson = JSON_IMAGE_LIST_REGEX.find(unpackedScript)?.destructured?.toList()?.get(0).orEmpty()
-        val imageList = try {
-            json.parseToJsonElement(imageListJson.replace(TRAILING_COMMA_REGEX, "]")).jsonArray
-        } catch (_: IllegalArgumentException) {
-            emptyList()
-        }
-        return imageList.mapIndexed { i, jsonEl ->
-            val encodedLink = jsonEl.jsonPrimitive.content
-            val decodedLink = String(Base64.decode(encodedLink, Base64.DEFAULT))
-            Page(i, document.location(), "https:$decodedLink")
-        }
-    }
-
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+    private fun buildListRequest(page: Int, order: String? = null, query: String? = null, filters: FilterList? = null): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
-            .addQueryParameter("s", query)
             .addQueryParameter("page", page.toString())
 
-        filters.forEach { filter ->
+        order?.let { url.addQueryParameter("order", it) }
+        query?.takeIf { it.isNotBlank() }?.let { url.addQueryParameter("s", it) }
+
+        filters?.forEach { filter ->
             when (filter) {
-                is AuthorFilter -> url.addQueryParameter("author", filter.state)
-                is YearFilter -> url.addQueryParameter("yearx", filter.state)
-                is StatusFilter -> url.addQueryParameter("status", filter.selectedValue())
-                is TypeFilter -> url.addQueryParameter("type", filter.selectedValue())
-                is OrderByFilter -> url.addQueryParameter("order", filter.selectedValue())
 
-                is GenreListFilter -> {
-                    filter.state
-                        .filter { it.state != Filter.TriState.STATE_IGNORE }
-                        .forEach {
-                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) {
-                                "-${it.value}"
-                            } else {
-                                it.value
-                            }
-                            url.addQueryParameter("genre[]", value)
-                        }
-                }
-
-                is ProjectFilter -> {
-                    if (filter.selectedValue() == "project-filter-on") {
-                        url.setPathSegment(0, projectPageString.substring(1))
+                is StatusFilter -> {
+                    val values = listOf("", "ongoing", "completed")
+                    values[filter.state].takeIf { it.isNotEmpty() }?.let {
+                        url.addQueryParameter("status", it)
                     }
                 }
 
-                else -> Unit
+                is TypeFilter -> {
+                    val values = listOf("", "manga", "manhwa", "manhua", "comic")
+                    values[filter.state].takeIf { it.isNotEmpty() }?.let {
+                        url.addQueryParameter("type", it)
+                    }
+                }
+
+                is OrderFilter -> {
+                    val values = listOf("popular", "update", "new", "title")
+                    url.addQueryParameter("order", values[filter.state])
+                }
+
+                else -> {}
             }
         }
 
-        url.addPathSegment("")
         return GET(url.build(), headers)
     }
 
+    /* ================= POPULAR / LATEST ================= */
+
+    override fun popularMangaRequest(page: Int) =
+        buildListRequest(page, order = "popular")
+
+    override fun latestUpdatesRequest(page: Int) =
+        buildListRequest(page, order = "latest")
+
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList) =
+        buildListRequest(page, query = query, filters = filters)
+
+    override fun popularMangaNextPageSelector() = "a[rel=next]"
+    override fun latestUpdatesNextPageSelector() = "a[rel=next]"
+    override fun searchMangaNextPageSelector() = "a[rel=next]"
+
+    /* ================= PAGE LIST ================= */
+
+    override fun pageListParse(document: Document): List<Page> {
+        val unpacked = document.selectFirst("script:containsData(eval)")!!.data().let(Unpacker::unpack)
+
+        val images = JSON_IMAGE_LIST_REGEX.find(unpacked)
+            ?.groupValues?.getOrNull(1)
+            ?.replace(TRAILING_COMMA_REGEX, "]")
+            ?.let { runCatching { json.parseToJsonElement(it).jsonArray }.getOrNull() }
+            ?: return emptyList()
+
+        return images.mapIndexed { i, el ->
+            val decoded = String(Base64.decode(el.jsonPrimitive.content, Base64.DEFAULT))
+            Page(i, document.location(), "https:$decoded")
+        }
+    }
+
+    /* ================= CHAPTER PARSER ================= */
+
+    override fun chapterFromElement(element: Element): SChapter {
+        val chapter = SChapter.create()
+        val spans = element.select(".chapternum")
+
+        val chapterText = spans.getOrNull(0)?.text().orEmpty()
+        val infoText = spans.getOrNull(1)?.text().orEmpty()
+
+        chapter.name = chapterText
+
+        chapter.chapter_number = Regex("""\d+(\.\d+)?""")
+            .find(chapterText)
+            ?.value
+            ?.toFloatOrNull()
+            ?: -1f
+
+        infoText.substringAfter("|", "")
+            .replace("Fansub", "")
+            .trim()
+            .takeIf(String::isNotEmpty)
+            ?.let { chapter.scanlator = it }
+
+        chapter.setUrlWithoutDomain(element.selectFirst("a")!!.attr("href"))
+        chapter.date_upload = element.selectFirst(".chapterdate")?.text().parseChapterDate()
+
+        return chapter
+    }
+
+    /* ================= FILTERS ================= */
+
+    override fun getFilterList() = FilterList(
+        Filter.Header("Filtros"),
+        OrderFilter(),
+        StatusFilter(),
+        TypeFilter(),
+    )
+
+    private class OrderFilter : Filter.Select<String>(
+        "Ordenar",
+        arrayOf("Popular", "Actualizado", "Nuevo", "A-Z"),
+    )
+
+    private class StatusFilter : Filter.Select<String>(
+        "Estado",
+        arrayOf("Todos", "En emisión", "Completo"),
+    )
+
+    private class TypeFilter : Filter.Select<String>(
+        "Tipo",
+        arrayOf("Todos", "Manga", "Manhwa", "Manhua", "Comic"),
+    )
+
     companion object {
-        val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
+        private val TRAILING_COMMA_REGEX = """,\s+]""".toRegex()
     }
 }
