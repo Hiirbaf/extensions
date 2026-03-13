@@ -48,7 +48,7 @@ class MangaTV :
                 }
 
                 is OrderFilter -> {
-                    val values = listOf("popular", "update", "latest", "title")
+                    val values = listOf("popular", "update", "title", "titlereverse")
                     url.addQueryParameter("order", values[filter.state])
                 }
 
@@ -63,7 +63,7 @@ class MangaTV :
 
     override fun popularMangaRequest(page: Int) = buildListRequest(page, order = "popular")
 
-    override fun latestUpdatesRequest(page: Int) = buildListRequest(page, order = "latest")
+    override fun latestUpdatesRequest(page: Int) = buildListRequest(page, order = "update")
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList) = buildListRequest(page, query = query, filters = filters)
 
@@ -128,7 +128,7 @@ class MangaTV :
     private class OrderFilter :
         Filter.Select<String>(
             "Ordenar",
-            arrayOf("Popular", "Actualizado", "Últimos", "A-Z"),
+            arrayOf("Popular", "Actualizado", "A-Z", "Z-A"),
         )
 
     private class TypeFilter :
