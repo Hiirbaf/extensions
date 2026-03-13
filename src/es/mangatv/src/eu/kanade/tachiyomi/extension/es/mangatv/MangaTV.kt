@@ -25,6 +25,26 @@ class MangaTV :
 
     override val seriesDescriptionSelector = "b:contains(Sinopsis) + span"
 
+    override fun popularMangaRequest(page: Int): Request {
+        val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegment(mangaUrlDirectory.substring(1))
+            .addQueryParameter("order", "popular")
+            .addQueryParameter("page", page.toString())
+            .build()
+
+        return GET(url, headers)
+    }
+
+    override fun latestUpdatesRequest(page: Int): Request {
+        val url = baseUrl.toHttpUrl().newBuilder()
+            .addPathSegment(mangaUrlDirectory.substring(1))
+            .addQueryParameter("order", "latest")
+            .addQueryParameter("page", page.toString())
+            .build()
+
+        return GET(url, headers)
+    }
+
     override fun pageListParse(document: Document): List<Page> {
         val unpackedScript = document.selectFirst("script:containsData(eval)")!!.data()
             .let(Unpacker::unpack)
