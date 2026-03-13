@@ -82,8 +82,8 @@ class MangaTV :
 
         if (extraGenres.isNotEmpty()) {
             manga.genre = listOfNotNull(
-            manga.genre,
-                extraGenres.joinToString(", ")
+                manga.genre,
+                extraGenres.joinToString(", "),
             ).joinToString(", ")
         }
 
