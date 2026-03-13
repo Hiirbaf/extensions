@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import keiyoushi.lib.unpacker.Unpacker
 import kotlinx.serialization.json.jsonArray
@@ -41,7 +42,7 @@ class MangaTV :
         }
     }
 
-    override fun searchMangaRequest(page: Int, query: String): Request {
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegment(mangaUrlDirectory.substring(1))
             .addQueryParameter("s", query)
