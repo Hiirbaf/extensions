@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.extension.es.mangatv
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import keiyoushi.lib.unpacker.Unpacker
@@ -60,7 +61,8 @@ class MangaTV :
                     filter.state
                         .filter { it.state != Filter.TriState.STATE_IGNORE }
                         .forEach {
-                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) "-${it.value}" else it.value
+                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE)
+                                "-${it.value}" else it.value
                             url.addQueryParameter("genre[]", value)
                         }
                 }
@@ -70,6 +72,8 @@ class MangaTV :
                         url.setPathSegment(0, projectPageString.substring(1))
                     }
                 }
+
+                else -> Unit
             }
         }
 
