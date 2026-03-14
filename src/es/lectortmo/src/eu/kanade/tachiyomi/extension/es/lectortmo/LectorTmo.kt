@@ -237,9 +237,11 @@ class LectorTmo :
                                 url.addQueryParameter("genders[]", genre.id)
                             Filter.TriState.STATE_EXCLUDE ->
                                 url.addQueryParameter("exclude_genders[]", genre.id)
+                            else -> {}
                         }
                     }
                 }
+                else -> Unit
             }
         }
 
