@@ -46,11 +46,11 @@ private data class NsfwOption(
 )
 
 private val NSFW_OPTIONS = listOf(
-    NsfwOption("nsfw_ecchi", "Ecchi", "6"),
-    NsfwOption("nsfw_gl", "Girls Love", "17"),
-    NsfwOption("nsfw_bl", "Boys Love", "18"),
-    NsfwOption("nsfw_harem", "Harem", "19"),
-    NsfwOption("nsfw_trap", "Trap", "94"),
+    NsfwOption(NSFW_ECCHI, "Ecchi", "6"),
+    NsfwOption(NSFW_GIRLS_LOVE, "Girls Love", "17"),
+    NsfwOption(NSFW_BOYS_LOVE, "Boys Love", "18"),
+    NsfwOption(NSFW_HAREM, "Harem", "19"),
+    NsfwOption(NSFW_TRAP, "Trap", "94"),
 )
 class LectorTmo :
     ParsedHttpSource(),
@@ -584,6 +584,25 @@ class LectorTmo :
             "Ocultar todo el contenido NSFW",
             "Bloquea automáticamente Ecchi, GL, BL, Harem y Trap",
         )
+        nsfwGeneral.setOnPreferenceChangeListener { _, newValue ->
+            val enabled = newValue as Boolean
+
+            if (enabled) {
+                cacheNsfwState()
+
+                preferences.edit()
+                    .putBoolean(NSFW_ECCHI, true)
+                    .putBoolean(NSFW_GIRLS_LOVE, true)
+                    .putBoolean(NSFW_BOYS_LOVE, true)
+                    .putBoolean(NSFW_HAREM, true)
+                    .putBoolean(NSFW_TRAP, true)
+                    .apply()
+            } else {
+                restoreNsfwState()
+            }
+
+            true
+        }
 
         screen.addPreference(nsfwGeneral)
 
