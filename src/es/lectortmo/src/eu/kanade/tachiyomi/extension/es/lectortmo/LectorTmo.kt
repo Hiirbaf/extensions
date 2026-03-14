@@ -39,13 +39,18 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-@Serializable
-data class NsfwState(
-    val ecchi: Boolean,
-    val girlsLove: Boolean,
-    val boysLove: Boolean,
-    val harem: Boolean,
-    val trap: Boolean,
+private data class NsfwOption(
+    val key: String,
+    val title: String,
+    val genreId: String,
+)
+
+private val NSFW_OPTIONS = listOf(
+    NsfwOption("nsfw_ecchi", "Ecchi", "6"),
+    NsfwOption("nsfw_gl", "Girls Love", "17"),
+    NsfwOption("nsfw_bl", "Boys Love", "18"),
+    NsfwOption("nsfw_harem", "Harem", "19"),
+    NsfwOption("nsfw_trap", "Trap", "94"),
 )
 class LectorTmo :
     ParsedHttpSource(),
@@ -113,26 +118,14 @@ class LectorTmo :
     }
 
     // Marks erotic content as false and excludes: Ecchi(6), GirlsLove(17), BoysLove(18), Harem(19), Trap(94) genders
-    private fun getSFWParams(): List<Pair<String, String>> {
-        val hidden = mutableListOf<String>()
+    private fun getSFWParams(): List<Pair<String, String>> = buildList {
+        add("erotic" to "false")
 
-        if (getSfwGeneral()) {
-            hidden += listOf("6", "17", "18", "19", "94")
-        } else {
-            if (getNsfwEcchi()) hidden += "6"
-            if (getNsfwGirlsLove()) hidden += "17"
-            if (getNsfwBoysLove()) hidden += "18"
-            if (getNsfwHarem()) hidden += "19"
-            if (getNsfwTrap()) hidden += "94"
+        NSFW_OPTIONS.forEach {
+            if (preferences.getBoolean(it.key, false)) {
+                add("exclude_genders[]" to it.genreId)
+            }
         }
-
-        val params = hidden.map { "exclude_genders[]" to it }.toMutableList()
-
-        if (getSfwGeneral() || getNsfwEcchi()) {
-            params += "erotic" to "false"
-        }
-
-        return params
     }
 
     private fun libraryRequest(page: Int, orderItem: String): Request {
@@ -592,35 +585,15 @@ class LectorTmo :
             "Bloquea automáticamente Ecchi, GL, BL, Harem y Trap",
         )
 
-        val ecchi = checkBox(NSFW_ECCHI, "    • Ocultar Ecchi")
-        val gl = checkBox(NSFW_GIRLS_LOVE, "    • Ocultar Girls Love")
-        val bl = checkBox(NSFW_BOYS_LOVE, "    • Ocultar Boys Love")
-        val harem = checkBox(NSFW_HAREM, "    • Ocultar Harem")
-        val trap = checkBox(NSFW_TRAP, "    • Ocultar Trap")
+        screen.addPreference(nsfwGeneral)
 
-        val nsfwPrefs = listOf(ecchi, gl, bl, harem, trap)
-
-        fun updateState(allSfwEnabled: Boolean) {
-            nsfwPrefs.forEach { it.setEnabled(!allSfwEnabled) }
-            if (allSfwEnabled && preferences.getString(NSFW_STATE_CACHE, null) == null) {
-                cacheNsfwState()
-                preferences.edit()
-                    .putBoolean(NSFW_ECCHI, false)
-                    .putBoolean(NSFW_GIRLS_LOVE, false)
-                    .putBoolean(NSFW_BOYS_LOVE, false)
-                    .putBoolean(NSFW_HAREM, false)
-                    .putBoolean(NSFW_TRAP, false)
-                    .apply()
-            } else {
-                restoreNsfwState()
-            }
-        }
-
-        updateState(isSfwEnabled())
-
-        nsfwGeneral.setOnPreferenceChangeListener { _, newValue ->
-            updateState(newValue as Boolean)
-            true
+        NSFW_OPTIONS.forEach {
+            screen.addPreference(
+                checkBox(
+                    it.key,
+                    "    • Ocultar ${it.title}",
+                ),
+            )
         }
 
         val scanlatorPref = checkBox(
@@ -637,8 +610,6 @@ class LectorTmo :
             SAVE_LAST_CF_URL_PREF_DEFAULT_VALUE,
         )
 
-        screen.addPreference(nsfwGeneral)
-        nsfwPrefs.forEach(screen::addPreference)
         screen.addPreference(scanlatorPref)
         screen.addPreference(saveLastCFUrlPreference)
     }
