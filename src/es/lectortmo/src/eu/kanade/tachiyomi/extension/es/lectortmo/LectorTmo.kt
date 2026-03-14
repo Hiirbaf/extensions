@@ -113,7 +113,7 @@ class LectorTmo :
     }
 
     // Marks erotic content as false and excludes: Ecchi(6), GirlsLove(17), BoysLove(18), Harem(19), Trap(94) genders
-    private fun getSFWUrlPart(): String {
+    private fun getSFWParams(): List<Pair<String, String>> {
         val hidden = mutableListOf<String>()
 
         if (getSfwGeneral()) {
@@ -126,22 +126,37 @@ class LectorTmo :
             if (getNsfwTrap()) hidden += "94"
         }
 
-        if (hidden.isEmpty()) return ""
+        val params = hidden.map { "exclude_genders[]" to it }.toMutableList()
 
-        val params = hidden.joinToString("") { "&exclude_genders[]=$it" }
-        val addErotic = getSfwGeneral() || getNsfwEcchi()
+        if (getSfwGeneral() || getNsfwEcchi()) {
+            params += "erotic" to "false"
+        }
 
-        return if (addErotic) "$params&erotic=false" else params
+        return params
+    }
+
+    private fun libraryRequest(page: Int, orderItem: String,): Request {
+        val url = "$baseUrl/library".toHttpUrl().newBuilder()
+
+        url.addQueryParameter("order_item", orderItem)
+        url.addQueryParameter("order_dir", "desc")
+        url.addQueryParameter("filter_by", "title")
+
+        getSFWParams().forEach { (k, v) ->
+            url.addQueryParameter(k, v)
+        }
+
+        url.addQueryParameter("_pg", "1")
+        url.addQueryParameter("page", page.toString())
+
+        return GET(url.build(), tmoHeaders)
     }
 
     override fun fetchPopularManga(page: Int): Observable<MangasPage> = safeClient.newCall(popularMangaRequest(page))
         .asObservableSuccess()
         .map { popularMangaParse(it) }
 
-    override fun popularMangaRequest(page: Int) = GET(
-        "$baseUrl/library?order_item=likes_count&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
-        tmoHeaders,
-    )
+    override fun popularMangaRequest(page: Int) = libraryRequest(page, "likes_count")
 
     override fun popularMangaNextPageSelector() = "a[rel='next']"
 
@@ -159,10 +174,7 @@ class LectorTmo :
         .asObservableSuccess()
         .map { latestUpdatesParse(it) }
 
-    override fun latestUpdatesRequest(page: Int) = GET(
-        "$baseUrl/library?order_item=creation&order_dir=desc&filter_by=title${getSFWUrlPart()}&_pg=1&page=$page",
-        tmoHeaders,
-    )
+    override fun latestUpdatesRequest(page: Int) = libraryRequest(page, "creation")
 
     override fun latestUpdatesNextPageSelector() = popularMangaNextPageSelector()
 
@@ -189,40 +201,30 @@ class LectorTmo :
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = "$baseUrl/library".toHttpUrl().newBuilder()
+
         url.addQueryParameter("title", query)
 
-        val nsfwPart = getSFWUrlPart()
-        if (nsfwPart.isNotEmpty()) {
-            nsfwPart.split("&")
-                .filter { it.isNotBlank() }
-                .forEach { param ->
-                    val parts = param.split("=")
-                    val key = parts.first().removePrefix("?")
-                    val value = parts.getOrElse(1) { "" }
-                    url.addQueryParameter(key, value)
-                }
+        getSFWParams().forEach { (k, v) ->
+            url.addQueryParameter(k, v)
         }
 
         url.addQueryParameter("page", page.toString())
-        url.addQueryParameter("_pg", "1") // Extra query to prevent scraping block (without it = 403)
+        url.addQueryParameter("_pg", "1")
 
         filters.forEach { filter ->
             when (filter) {
                 is Types -> url.addQueryParameter("type", filter.toUriPart())
                 is Demography -> url.addQueryParameter("demography", filter.toUriPart())
                 is SortBy -> {
-                    if (filter.state != null) {
-                        url.addQueryParameter("order_item", SORTABLES[filter.state!!.index].second)
-                        url.addQueryParameter(
-                            "order_dir",
-                            if (filter.state!!.ascending) "asc" else "desc",
-                        )
+                    filter.state?.let {
+                        url.addQueryParameter("order_item", SORTABLES[it.index].second)
+                        url.addQueryParameter("order_dir", if (it.ascending) "asc" else "desc")
                     }
                 }
                 is ContentTypeList -> {
                     filter.state.forEach { content ->
                         when (content.state) {
-                            Filter.TriState.STATE_IGNORE -> url.addQueryParameter(content.id, "")
+                            Filter.TriState.STATE_IGNORE -> {}
                             Filter.TriState.STATE_INCLUDE -> url.addQueryParameter(content.id, "true")
                             Filter.TriState.STATE_EXCLUDE -> url.addQueryParameter(content.id, "false")
                         }
@@ -231,14 +233,16 @@ class LectorTmo :
                 is GenreList -> {
                     filter.state.forEach { genre ->
                         when (genre.state) {
-                            Filter.TriState.STATE_INCLUDE -> url.addQueryParameter("genders[]", genre.id)
-                            Filter.TriState.STATE_EXCLUDE -> url.addQueryParameter("exclude_genders[]", genre.id)
+                            Filter.TriState.STATE_INCLUDE ->
+                                url.addQueryParameter("genders[]", genre.id)
+                            Filter.TriState.STATE_EXCLUDE ->
+                                url.addQueryParameter("exclude_genders[]", genre.id)
                         }
                     }
                 }
-                else -> {}
             }
         }
+
         return GET(url.build(), tmoHeaders)
     }
 
