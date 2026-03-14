@@ -47,7 +47,9 @@ data class NsfwState(
     val harem: Boolean,
     val trap: Boolean,
 )
-class LectorTmo : ParsedHttpSource(), ConfigurableSource {
+class LectorTmo :
+    ParsedHttpSource(),
+    ConfigurableSource {
 
     override val id = 4146344224513899730
 
