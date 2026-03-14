@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
 import keiyoushi.lib.unpacker.Unpacker
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
