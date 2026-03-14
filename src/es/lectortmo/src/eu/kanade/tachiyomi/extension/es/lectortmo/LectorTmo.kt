@@ -18,8 +18,6 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
 import eu.kanade.tachiyomi.util.asJsoup
 import keiyoushi.utils.getPreferencesLazy
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -579,11 +577,11 @@ class LectorTmo :
         val ctx = screen.context
 
         fun checkBox(key: String, title: String, summary: String? = null, default: Boolean = false) = CheckBoxPreference(ctx).apply {
-                this.key = key
-                this.title = title
-                summary?.let { this.summary = it }
-                setDefaultValue(default)
-            }
+            this.key = key
+            this.title = title
+            summary?.let { this.summary = it }
+            setDefaultValue(default)
+        }
 
         val nsfwGeneral = checkBox(
             SFW_GENERAL,
