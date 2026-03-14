@@ -135,7 +135,7 @@ class LectorTmo :
         return params
     }
 
-    private fun libraryRequest(page: Int, orderItem: String,): Request {
+    private fun libraryRequest(page: Int, orderItem: String): Request {
         val url = "$baseUrl/library".toHttpUrl().newBuilder()
 
         url.addQueryParameter("order_item", orderItem)
