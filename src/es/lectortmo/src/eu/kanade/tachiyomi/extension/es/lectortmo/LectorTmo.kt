@@ -594,7 +594,7 @@ class LectorTmo :
         }
 
         fun updateState(enabled: Boolean) {
-            subToggles.forEach { it.setEnabled = !enabled }
+            subToggles.forEach { it.setEnabled(!enabled) }
         }
 
         updateState(preferences.getBoolean(SFW_GENERAL, false))
