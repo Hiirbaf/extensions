@@ -625,7 +625,7 @@ class LectorTmo :
             ),
         )
     }
-    
+
     companion object {
         private val DIRPATH_REGEX = """var\s+dirPath\s*=\s*'(.*?)'\s*;""".toRegex()
         private val IMAGES_REGEX = """var\s+images\s*=.*\[(.*?)\]\s*'\s*\)\s*;""".toRegex()
