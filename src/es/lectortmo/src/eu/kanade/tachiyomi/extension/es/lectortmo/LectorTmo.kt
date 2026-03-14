@@ -44,13 +44,15 @@ private data class NsfwOption(
     val genreId: String,
 )
 
-private val NSFW_OPTIONS = listOf(
-    NsfwOption(NSFW_ECCHI, "Ecchi", "6"),
-    NsfwOption(NSFW_GIRLS_LOVE, "Girls Love", "17"),
-    NsfwOption(NSFW_BOYS_LOVE, "Boys Love", "18"),
-    NsfwOption(NSFW_HAREM, "Harem", "19"),
-    NsfwOption(NSFW_TRAP, "Trap", "94"),
+@Serializable
+private data class NsfwState(
+    val ecchi: Boolean,
+    val girlsLove: Boolean,
+    val boysLove: Boolean,
+    val harem: Boolean,
+    val trap: Boolean,
 )
+
 class LectorTmo :
     ParsedHttpSource(),
     ConfigurableSource {
@@ -68,6 +70,14 @@ class LectorTmo :
     override val supportsLatest = true
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    private val NSFW_OPTIONS = listOf(
+        NsfwOption(NSFW_ECCHI, "Ecchi", "6"),
+        NsfwOption(NSFW_GIRLS_LOVE, "Girls Love", "17"),
+        NsfwOption(NSFW_BOYS_LOVE, "Boys Love", "18"),
+        NsfwOption(NSFW_HAREM, "Harem", "19"),
+        NsfwOption(NSFW_TRAP, "Trap", "94"),
+    )
 
     // Needed to ignore the referer header in WebView
     private val tmoHeaders = super.headersBuilder()
