@@ -47,10 +47,7 @@ data class NsfwState(
     val harem: Boolean,
     val trap: Boolean,
 )
-
-class LectorTmo :
-    ParsedHttpSource(),
-    ConfigurableSource {
+class LectorTmo : ParsedHttpSource(), ConfigurableSource {
 
     override val id = 4146344224513899730
 
@@ -60,9 +57,9 @@ class LectorTmo :
 
     override val lang = "es"
 
-    override val supportsLatest = true
-
     private val preferences: SharedPreferences by getPreferencesLazy()
+
+    override val supportsLatest = true
 
     private val json = Json { ignoreUnknownKeys = true }
 
