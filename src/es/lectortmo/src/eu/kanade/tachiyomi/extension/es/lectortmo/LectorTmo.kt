@@ -71,7 +71,7 @@ class LectorTmo :
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val NSFW_OPTIONS = listOf(
+    private val nsfwOptions = listOf(
         NsfwOption(NSFW_ECCHI, "Ecchi", "6"),
         NsfwOption(NSFW_GIRLS_LOVE, "Girls Love", "17"),
         NsfwOption(NSFW_BOYS_LOVE, "Boys Love", "18"),
@@ -130,7 +130,7 @@ class LectorTmo :
     private fun getSFWParams(): List<Pair<String, String>> = buildList {
         add("erotic" to "false")
 
-        NSFW_OPTIONS.forEach {
+        nsfwOptions.forEach {
             if (preferences.getBoolean(it.key, false)) {
                 add("exclude_genders[]" to it.genreId)
             }
@@ -615,7 +615,7 @@ class LectorTmo :
 
         screen.addPreference(nsfwGeneral)
 
-        NSFW_OPTIONS.forEach {
+        nsfwOptions.forEach {
             screen.addPreference(
                 checkBox(
                     it.key,
