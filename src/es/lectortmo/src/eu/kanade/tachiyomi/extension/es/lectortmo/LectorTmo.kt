@@ -73,13 +73,14 @@ class LectorTmo :
         .set("Referer", "$baseUrl/")
         .build()
 
-    @SuppressLint("CustomX509TrustManager")
     private fun OkHttpClient.Builder.ignoreAllSSLErrors(): OkHttpClient.Builder {
-        val naiveTrustManager = object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
-            override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) = Unit
-            override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) = Unit
-        }
+        val naiveTrustManager =
+            @SuppressLint("CustomX509TrustManager")
+            object : X509TrustManager {
+                override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+                override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) = Unit
+                override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) = Unit
+            }
 
         val insecureSocketFactory = SSLContext.getInstance("SSL").apply {
             val trustAllCerts = arrayOf<TrustManager>(naiveTrustManager)
