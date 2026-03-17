@@ -43,9 +43,10 @@ class MangaFire(
     ConfigurableSource {
     override val name = "MangaFire"
 
-    override val baseUrl = "https://mangafire.to"
+    override val baseUrl = "https://zonatmo.to"
 
     override val supportsLatest = true
+    private val defaultLanguage: String = "es"
     private val preferences by getPreferencesLazy()
 
     override val client = network.cloudflareClient.newBuilder()
