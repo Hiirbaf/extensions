@@ -123,7 +123,6 @@ class MangaFire(
                 it.addToUri(this)
             }
 
-            addQueryParameter("language[]", langCode)
             addQueryParameter("page", page.toString())
 
             if (stdQuery.isNotBlank()) {
