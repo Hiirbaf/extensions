@@ -46,7 +46,6 @@ class MangaFire(
     override val baseUrl = "https://zonatmo.to"
 
     override val supportsLatest = true
-    private val defaultLanguage: String = "es"
     private val preferences by getPreferencesLazy()
 
     override val client = network.cloudflareClient.newBuilder()
@@ -135,7 +134,7 @@ class MangaFire(
                             requestIntercept = { request ->
                                 val url = request.url
                                 if (
-                                    url.host == "mangafire.to" &&
+                                    url.host == "zonatmo.to" &&
                                     url.encodedPath.orEmpty().contains("ajax/manga/search")
                                 ) {
                                     WebViewHelper.RequestIntercept.Capture
@@ -303,7 +302,7 @@ class MangaFire(
                 requestIntercept = { request ->
                     val url = request.url
                     if (
-                        url.host == "mangafire.to" &&
+                        url.host == "zonatmo.to" &&
                         url.encodedPath.orEmpty().contains("ajax/read")
                     ) {
                         if (setOf("ajax/read/chapter", "ajax/read/volume").any { url.encodedPath!!.contains(it) }) {
