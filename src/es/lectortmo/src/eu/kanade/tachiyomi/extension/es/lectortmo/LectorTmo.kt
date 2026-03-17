@@ -125,9 +125,10 @@ class LectorTmo :
                 add("exclude_genders[]" to it.genreId)
             }
         } else {
-            nsfwOptions.forEach {
-                if (preferences.getBoolean(it.key, false)) {
-                    add("exclude_genders[]" to it.genreId)
+            val selectedKeys = preferences.getStringSet(NSFW_CATEGORIES, emptySet()) ?: emptySet()
+            nsfwOptions.forEach { option ->
+                if (selectedKeys.contains(option.key)) {
+                    add("exclude_genders[]" to option.genreId)
                 }
             }
         }
@@ -590,23 +591,24 @@ class LectorTmo :
             "Bloquea automáticamente Ecchi, GL, BL, Harem y Trap",
         )
 
-        val subToggles = nsfwOptions.map {
-            checkBox(it.key, "    • Ocultar ${it.title}")
+        val nsfwList = MultiSelectListPreference(ctx).apply {
+            key = NSFW_CATEGORIES
+            title = "Categorías a filtrar"
+            summary = "Selecciona qué etiquetas ocultar específicamente"
+            entries = nsfwOptions.map { it.title }.toTypedArray()
+            entryValues = nsfwOptions.map { it.key }.toTypedArray()
+            setDefaultValue(emptySet<String>())
         }
-
-        fun updateState(enabled: Boolean) {
-            subToggles.forEach { it.setEnabled(!enabled) }
+        fun updateState(allHidden: Boolean) {
+            nsfwList.setEnabled(!allHidden)
         }
-
         updateState(preferences.getBoolean(SFW_GENERAL, false))
-
         nsfwGeneral.setOnPreferenceChangeListener { _, newValue ->
             updateState(newValue as Boolean)
             true
         }
-
         screen.addPreference(nsfwGeneral)
-        subToggles.forEach { screen.addPreference(it) }
+        screen.addPreference(nsfwList)
 
         screen.addPreference(
             checkBox(
@@ -636,6 +638,8 @@ class LectorTmo :
         private const val SCANLATOR_PREF_SUMMARY = "Se mostraran capítulos repetidos pero con diferentes Scanlators"
         private const val SCANLATOR_PREF_DEFAULT_VALUE = true
 
+        private const val NSFW_CATEGORIES = "pref_nsfw_categories"
+    
         private const val SFW_GENERAL = "pref_sfw_general"
         private const val NSFW_ECCHI = "pref_nsfw_ecchi"
         private const val NSFW_GIRLS_LOVE = "pref_nsfw_girls_love"
