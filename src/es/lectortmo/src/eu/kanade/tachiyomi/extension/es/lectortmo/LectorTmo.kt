@@ -639,7 +639,7 @@ class LectorTmo :
         private const val SCANLATOR_PREF_DEFAULT_VALUE = true
 
         private const val NSFW_CATEGORIES = "pref_nsfw_categories"
-    
+
         private const val SFW_GENERAL = "pref_sfw_general"
         private const val NSFW_ECCHI = "pref_nsfw_ecchi"
         private const val NSFW_GIRLS_LOVE = "pref_nsfw_girls_love"
