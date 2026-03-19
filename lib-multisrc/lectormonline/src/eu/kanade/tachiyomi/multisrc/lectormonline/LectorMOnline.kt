@@ -26,6 +26,10 @@ open class LectorMOnline(
 
     override val supportsLatest = true
 
+    // 🔥 Preferences (MEJOR ARRIBA)
+    private val preferences: SharedPreferences by injectLazy()
+    private val config = LectorMOnlinePreferences(preferences)
+
         /* ============================
          * POPULAR
          * ============================ */
@@ -39,10 +43,7 @@ open class LectorMOnline(
         val mangas = response.parseAs<List<ComicDto>>()
             .map { it.toSManga() }
 
-        return MangasPage(
-            mangas,
-            false,
-        )
+        return MangasPage(mangas, false)
     }
 
         /* ============================
@@ -77,7 +78,7 @@ open class LectorMOnline(
             .addQueryParameter("page", page.toString())
             .addQueryParameter("nsfw", showNsfw.toString())
 
-        if (!query.isBlank()) {
+        if (query.isNotBlank()) {
             url.addQueryParameter("search", query.trim())
         }
 
@@ -94,7 +95,6 @@ open class LectorMOnline(
 
     override fun searchMangaParse(response: Response): MangasPage {
         val obj = response.parseAs<ComicListDto>()
-
         val mangas = obj.data.map { it.toSManga() }
 
         return MangasPage(
@@ -170,11 +170,13 @@ open class LectorMOnline(
         )
     }
 
+        /* ============================
+         * SETTINGS
+         * ============================ */
+
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
         config.setup(screen)
     }
-    private val preferences: SharedPreferences by injectLazy()
-    private val config = LectorMOnlinePreferences(preferences)
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 }
