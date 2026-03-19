@@ -19,9 +19,7 @@ class LectorMOnlinePreferences(
         screen.addPreference(nsfwPref)
     }
 
-    fun showNsfw(): Boolean {
-        return preferences.getBoolean(SHOW_NSFW, false)
-    }
+    fun showNsfw(): Boolean = preferences.getBoolean(SHOW_NSFW, false)
 
     companion object {
         const val SHOW_NSFW = "show_nsfw"
