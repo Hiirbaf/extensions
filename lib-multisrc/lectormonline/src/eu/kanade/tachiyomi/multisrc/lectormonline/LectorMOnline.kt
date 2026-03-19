@@ -22,7 +22,7 @@ open class LectorMOnline(
     override val baseUrl: String,
     override val lang: String,
 ) : HttpSource(),
-ConfigurableSource {
+    ConfigurableSource {
 
     override val supportsLatest = true
 
