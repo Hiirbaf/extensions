@@ -11,17 +11,18 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import uy.kohesive.injekt.injectLazy
 import keiyoushi.utils.parseAs
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
+import uy.kohesive.injekt.injectLazy
 
 open class LectorMOnline(
     override val name: String,
     override val baseUrl: String,
     override val lang: String,
-) : HttpSource(), ConfigurableSource {
+) : HttpSource(),
+ConfigurableSource {
 
     override val supportsLatest = true
 
