@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.multisrc.lectormonline
 
+import android.content.SharedPreferences
+import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
@@ -8,6 +11,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import uy.kohesive.injekt.injectLazy
 import keiyoushi.utils.parseAs
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -17,7 +21,7 @@ open class LectorMOnline(
     override val name: String,
     override val baseUrl: String,
     override val lang: String,
-) : HttpSource() {
+) : HttpSource(), ConfigurableSource {
 
     override val supportsLatest = true
 
@@ -25,7 +29,10 @@ open class LectorMOnline(
          * POPULAR
          * ============================ */
 
-    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/comics/popular?limit=100", headers)
+    override fun popularMangaRequest(page: Int): Request {
+        val showNsfw = config.showNsfw()
+        return GET("$baseUrl/api/comics/popular?limit=100&nsfw=$showNsfw", headers)
+    }
 
     override fun popularMangaParse(response: Response): MangasPage {
         val mangas = response.parseAs<List<ComicDto>>()
@@ -41,7 +48,10 @@ open class LectorMOnline(
          * LATEST
          * ============================ */
 
-    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/comics?page=$page", headers)
+    override fun latestUpdatesRequest(page: Int): Request {
+        val showNsfw = config.showNsfw()
+        return GET("$baseUrl/api/comics?page=$page&nsfw=$showNsfw", headers)
+    }
 
     override fun latestUpdatesParse(response: Response): MangasPage = searchMangaParse(response)
 
@@ -60,8 +70,11 @@ open class LectorMOnline(
         val sortFilter = filters.filterIsInstance<SortByFilter>().firstOrNull()
         val sort = sortFilter?.selected
 
+        val showNsfw = config.showNsfw()
+
         val url = "$baseUrl/api/comics".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
+            .addQueryParameter("nsfw", showNsfw.toString())
 
         if (!query.isBlank()) {
             url.addQueryParameter("search", query.trim())
@@ -155,6 +168,12 @@ open class LectorMOnline(
             GenreFilter(genres),
         )
     }
+
+    override fun setupPreferenceScreen(screen: PreferenceScreen) {
+        config.setup(screen)
+    }
+    private val preferences: SharedPreferences by injectLazy()
+    private val config = LectorMOnlinePreferences(preferences)
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 }
