@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.multisrc.lectormonline
 
 import android.content.SharedPreferences
+import androidx.preference.CheckBoxPreference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -28,14 +29,15 @@ open class LectorMOnline(
 
     // 🔥 Preferences (MEJOR ARRIBA)
     private val preferences: SharedPreferences by injectLazy()
-    private val config = LectorMOnlinePreferences(preferences)
+
+    private fun showNsfw(): Boolean = preferences.getBoolean(SHOW_NSFW, false)
 
         /* ============================
          * POPULAR
          * ============================ */
 
     override fun popularMangaRequest(page: Int): Request {
-        val showNsfw = config.showNsfw()
+        val showNsfw = showNsfw()
         return GET("$baseUrl/api/comics/popular?limit=100&nsfw=$showNsfw", headers)
     }
 
@@ -51,7 +53,7 @@ open class LectorMOnline(
          * ============================ */
 
     override fun latestUpdatesRequest(page: Int): Request {
-        val showNsfw = config.showNsfw()
+        val showNsfw = showNsfw()
         return GET("$baseUrl/api/comics?page=$page&nsfw=$showNsfw", headers)
     }
 
@@ -72,7 +74,7 @@ open class LectorMOnline(
         val sortFilter = filters.filterIsInstance<SortByFilter>().firstOrNull()
         val sort = sortFilter?.selected
 
-        val showNsfw = config.showNsfw()
+        val showNsfw = showNsfw()
 
         val url = "$baseUrl/api/comics".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
@@ -173,9 +175,19 @@ open class LectorMOnline(
         /* ============================
          * SETTINGS
          * ============================ */
-
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
-        config.setup(screen)
+        val nsfwPref = CheckBoxPreference(screen.context).apply {
+            key = SHOW_NSFW
+            title = "Mostrar contenido NSFW"
+            summary = "Incluir mangas +18 en los resultados"
+            setDefaultValue(false)
+        }
+
+        screen.addPreference(nsfwPref)
+    }
+
+    companion object {
+        private const val SHOW_NSFW = "show_nsfw"
     }
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
