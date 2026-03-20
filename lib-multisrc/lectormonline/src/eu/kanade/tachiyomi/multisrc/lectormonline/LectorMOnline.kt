@@ -32,12 +32,10 @@ open class LectorMOnline(
 
     private fun nsfwMode(): String = preferences.getString(SHOW_NSFW, "all") ?: "all"
 
-    private fun HttpUrl.Builder.addNsfw(): HttpUrl.Builder {
-        return when (nsfwMode()) {
-            "sfw" -> addQueryParameter("nsfw", "false")
-            "nsfw" -> addQueryParameter("nsfw", "true")
-            else -> this
-        }
+    private fun HttpUrl.Builder.addNsfw(): HttpUrl.Builder = when (nsfwMode()) {
+        "sfw" -> addQueryParameter("nsfw", "false")
+        "nsfw" -> addQueryParameter("nsfw", "true")
+        else -> this
     }
         /* ============================
          * POPULAR
