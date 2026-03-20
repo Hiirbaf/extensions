@@ -1,7 +1,7 @@
 package eu.kanade.tachiyomi.multisrc.lectormonline
 
 import android.content.SharedPreferences
-import androidx.preference.CheckBoxPreference
+import androidx.preference.ListPreference
 import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -29,15 +29,25 @@ open class LectorMOnline(
 
     private val preferences: SharedPreferences by getPreferencesLazy()
 
-    private fun showNsfw(): Boolean = preferences.getBoolean(SHOW_NSFW, false)
+    private fun nsfwMode(): String = preferences.getString(SHOW_NSFW, "all") ?: "all"
 
+    private fun HttpUrl.Builder.addNsfw() = apply {
+        when (nsfwMode()) {
+            "sfw" -> addQueryParameter("nsfw", "false")
+            "nsfw" -> addQueryParameter("nsfw", "true")
+            // "all" -> no hace nada
+        }
+    }
         /* ============================
          * POPULAR
          * ============================ */
 
     override fun popularMangaRequest(page: Int): Request {
-        val showNsfw = showNsfw()
-        return GET("$baseUrl/api/comics/popular?limit=100&nsfw=$showNsfw", headers)
+        val url = "$baseUrl/api/comics/popular".toHttpUrl().newBuilder()
+            .addQueryParameter("limit", "100")
+            .addNsfw()
+
+        return GET(url.build(), headers)
     }
 
     override fun popularMangaParse(response: Response): MangasPage {
@@ -52,8 +62,11 @@ open class LectorMOnline(
          * ============================ */
 
     override fun latestUpdatesRequest(page: Int): Request {
-        val showNsfw = showNsfw()
-        return GET("$baseUrl/api/comics?page=$page&nsfw=$showNsfw", headers)
+        val url = "$baseUrl/api/comics".toHttpUrl().newBuilder()
+            .addQueryParameter("page", page.toString())
+            .addNsfw()
+
+        return GET(url.build(), headers)
     }
 
     override fun latestUpdatesParse(response: Response): MangasPage = searchMangaParse(response)
@@ -73,11 +86,9 @@ open class LectorMOnline(
         val sortFilter = filters.filterIsInstance<SortByFilter>().firstOrNull()
         val sort = sortFilter?.selected
 
-        val showNsfw = showNsfw()
-
         val url = "$baseUrl/api/comics".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
-            .addQueryParameter("nsfw", showNsfw.toString())
+            .addNsfw()
 
         if (query.isNotBlank()) {
             url.addQueryParameter("search", query.trim())
@@ -175,11 +186,12 @@ open class LectorMOnline(
          * SETTINGS
          * ============================ */
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
-        val nsfwPref = CheckBoxPreference(screen.context).apply {
+        val nsfwPref = ListPreference(screen.context).apply {
             key = SHOW_NSFW
-            title = "Mostrar contenido NSFW"
-            summary = "Incluir mangas +18 en los resultados"
-            setDefaultValue(false)
+            title = "Contenido NSFW"
+            entries = arrayOf("Mostrar todo", "Solo SFW", "Solo NSFW")
+            entryValues = arrayOf("all", "sfw", "nsfw")
+            setDefaultValue("all")
         }
 
         screen.addPreference(nsfwPref)
