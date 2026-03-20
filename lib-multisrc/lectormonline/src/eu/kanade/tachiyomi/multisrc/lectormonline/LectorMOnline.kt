@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
+import keiyoushi.utils.getPreferencesLazy
 import keiyoushi.utils.parseAs
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -26,9 +27,7 @@ open class LectorMOnline(
 
     override val supportsLatest = true
 
-    // 🔥 Preferences (MEJOR ARRIBA)
-    override val preferences: SharedPreferences
-        get() = sourcePreferences()
+    private val preferences: SharedPreferences by getPreferencesLazy()
 
     private fun showNsfw(): Boolean = preferences.getBoolean(SHOW_NSFW, false)
 
