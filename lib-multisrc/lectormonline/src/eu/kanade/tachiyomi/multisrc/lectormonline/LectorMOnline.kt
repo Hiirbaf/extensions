@@ -32,11 +32,11 @@ open class LectorMOnline(
 
     private fun nsfwMode(): String = preferences.getString(SHOW_NSFW, "all") ?: "all"
 
-    private fun HttpUrl.Builder.addNsfw() = apply {
-        when (nsfwMode()) {
+    private fun HttpUrl.Builder.addNsfw(): HttpUrl.Builder {
+        return when (nsfwMode()) {
             "sfw" -> addQueryParameter("nsfw", "false")
             "nsfw" -> addQueryParameter("nsfw", "true")
-            // "all" -> no hace nada
+            else -> this
         }
     }
         /* ============================
@@ -199,7 +199,7 @@ open class LectorMOnline(
     }
 
     companion object {
-        private const val SHOW_NSFW = "show_nsfw"
+        private const val SHOW_NSFW = "nsfw_mode"
     }
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
