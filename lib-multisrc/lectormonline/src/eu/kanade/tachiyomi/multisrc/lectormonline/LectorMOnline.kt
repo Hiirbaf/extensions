@@ -28,7 +28,8 @@ open class LectorMOnline(
     override val supportsLatest = true
 
     // 🔥 Preferences (MEJOR ARRIBA)
-    private val preferences: SharedPreferences by injectLazy()
+    override val preferences: SharedPreferences
+        get() = sourcePreferences()
 
     private fun showNsfw(): Boolean = preferences.getBoolean(SHOW_NSFW, false)
 
