@@ -22,17 +22,19 @@ class ManhwaLatino :
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
     ) {
 
-    override val client: OkHttpClient = network.cloudflareClient.newBuilder()
-        .rateLimitHost(baseUrl.toHttpUrl(), 2, 5)
-        .addInterceptor(CloudflareWarmupInterceptor(baseUrl, headers))
+    override val client: OkHttpClient = super.client.newBuilder()
+        .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
         .addInterceptor { chain ->
-            val response = chain.proceed(chain.request())
-            if (
-                response.headers("Content-Type").contains("application/octet-stream") &&
-                response.request.url.toString().endsWith(".jpg")
-            ) {
+            val request = chain.request()
+            val headers = request.headers.newBuilder()
+                .removeAll("Accept-Encoding")
+                .build()
+            val response = chain.proceed(request.newBuilder().headers(headers).build())
+            if (response.headers("Content-Type").contains("application/octet-stream") && response.request.url.toString().endsWith(".jpg")) {
+                val orgBody = response.body.source()
+                val newBody = orgBody.asResponseBody("image/jpeg".toMediaType())
                 response.newBuilder()
-                    .body(response.body.source().asResponseBody("image/jpeg".toMediaType()))
+                    .body(newBody)
                     .build()
             } else {
                 response
@@ -44,16 +46,11 @@ class ManhwaLatino :
 
     override val chapterUrlSelector = "div.mini-letters > a"
 
-    override val fetchGenres = false
-    override val useLoadMoreRequest = LoadMoreStrategy.Never
     override val mangaDetailsSelectorStatus = "div.post-content_item:contains(Estado del comic) > div.summary-content"
     override val mangaDetailsSelectorDescription = "div.post-content_item:contains(Resumen) div.summary-container"
     override val pageListParseSelector = "div.page-break img.wp-manga-chapter-img"
 
     private val chapterListNextPageSelector = "div.pagination > span.current + span"
-
-    override fun countViewsRequest(document: org.jsoup.nodes.Document) = null
-
     override fun chapterListParse(response: Response): List<SChapter> {
         val mangaUrl = response.request.url
         var document = response.asJsoup()
@@ -69,8 +66,7 @@ class ManhwaLatino :
             val hasNextPage = document.select(chapterListNextPageSelector).isNotEmpty()
             if (hasNextPage) {
                 page++
-                val nextPageUrl = mangaUrl.newBuilder()
-                    .setQueryParameter("t", page.toString()).build()
+                val nextPageUrl = mangaUrl.newBuilder().setQueryParameter("t", page.toString()).build()
                 document = client.newCall(GET(nextPageUrl, headers)).execute().asJsoup()
             } else {
                 break
@@ -80,25 +76,18 @@ class ManhwaLatino :
         return chapterList
     }
 
-    override fun headersBuilder() = super.headersBuilder()
-        .add("Referer", "$baseUrl/")
-        .add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-        .add("Accept-Language", "es-ES,es;q=0.9,en;q=0.8")
-
     override fun chapterFromElement(element: Element): SChapter {
         val chapter = SChapter.create()
 
         with(element) {
             selectFirst(chapterUrlSelector)!!.let { urlElement ->
                 chapter.url = urlElement.attr("abs:href").let {
-                    it.substringBefore("?style=paged") +
-                        if (!it.endsWith(chapterUrlSuffix)) chapterUrlSuffix else ""
+                    it.substringBefore("?style=paged") + if (!it.endsWith(chapterUrlSuffix)) chapterUrlSuffix else ""
                 }
                 chapter.name = urlElement.wholeText().substringAfter("\n")
             }
 
-            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")
-                ?.let { parseRelativeDate(it) }
+            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")?.let { parseRelativeDate(it) }
                 ?: selectFirst("span a")?.attr("title")?.let { parseRelativeDate(it) }
                 ?: parseChapterDate(selectFirst(chapterDateSelector())?.text())
         }
