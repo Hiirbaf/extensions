@@ -1,8 +1,12 @@
 package eu.kanade.tachiyomi.extension.es.manhwalatino
 
+import android.content.SharedPreferences
+import androidx.preference.ListPreference
+import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.multisrc.madara.Madara
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.interceptor.rateLimitHost
+import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -20,7 +24,25 @@ class ManhwaLatino :
         "https://manhwa-latino.com",
         "es",
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
-    ) {
+    ),
+    ConfigurableSource {
+
+    private val preferences: SharedPreferences = super.preferences
+
+    private val serverPref = "server_url"
+
+    private val serverValues = arrayOf(
+        "https://manhwa-latino.com",
+        "https://manhwa-es.com",
+    )
+
+    private val serverEntries = arrayOf(
+        "Manhwa-Latino",
+        "Manhwa-ES",
+    )
+
+    override val baseUrl: String
+        get() = preferences.getString(serverPref, serverValues[0])!!
 
     override val client: OkHttpClient = super.client.newBuilder()
         .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
@@ -29,13 +51,27 @@ class ManhwaLatino :
             val headers = request.headers.newBuilder()
                 .removeAll("Accept-Encoding")
                 .build()
-            val response = chain.proceed(request.newBuilder().headers(headers).build())
-            if (response.headers("Content-Type").contains("application/octet-stream") && response.request.url.toString().endsWith(".jpg")) {
-                val orgBody = response.body.source()
-                val newBody = orgBody.asResponseBody("image/jpeg".toMediaType())
-                response.newBuilder()
-                    .body(newBody)
-                    .build()
+
+            val newUrl = request.url.toString()
+                .replace("manhwa-latino.com", baseUrl.removePrefix("https://"))
+                .replace("manhwa-es.com", baseUrl.removePrefix("https://"))
+                .toHttpUrl()
+
+            val response = chain.proceed(
+                request.newBuilder()
+                    .url(newUrl)
+                    .headers(headers)
+                    .build(),
+            )
+
+            if (
+                response.headers("Content-Type").contains("application/octet-stream") &&
+                response.request.url.toString().endsWith(".jpg")
+            ) {
+                val newBody = response.body.source()
+                    .asResponseBody("image/jpeg".toMediaType())
+
+                response.newBuilder().body(newBody).build()
             } else {
                 response
             }
@@ -87,11 +123,23 @@ class ManhwaLatino :
                 chapter.name = urlElement.wholeText().substringAfter("\n")
             }
 
-            chapter.date_upload = selectFirst("img:not(.thumb)")?.attr("alt")?.let { parseRelativeDate(it) }
-                ?: selectFirst("span a")?.attr("title")?.let { parseRelativeDate(it) }
-                ?: parseChapterDate(selectFirst(chapterDateSelector())?.text())
+            // ❌ Sin fecha (el sitio no da año)
+            chapter.date_upload = 0L
         }
 
         return chapter
+    }
+
+    override fun setupPreferenceScreen(screen: PreferenceScreen) {
+        val pref = ListPreference(screen.context).apply {
+            key = serverPref
+            title = "Servidor"
+            entries = serverEntries
+            entryValues = serverValues
+            setDefaultValue(serverValues[0])
+            summary = "%s"
+        }
+
+        screen.addPreference(pref)
     }
 }
