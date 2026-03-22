@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.extension.es.manhwalatino
 
+import android.app.Application
 import android.content.SharedPreferences
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceScreen
@@ -17,6 +18,8 @@ import okhttp3.ResponseBody.Companion.asResponseBody
 import org.jsoup.nodes.Element
 import java.text.SimpleDateFormat
 import java.util.Locale
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 class ManhwaLatino :
     Madara(
@@ -27,7 +30,10 @@ class ManhwaLatino :
     ),
     ConfigurableSource {
 
-    private val preferences: SharedPreferences = super.preferences
+    private val preferences: SharedPreferences by lazy {
+        Injekt.get<Application>()
+            .getSharedPreferences("source_$id", 0)
+    }
 
     private val serverPref = "server_url"
 
@@ -44,39 +50,40 @@ class ManhwaLatino :
     override val baseUrl: String
         get() = preferences.getString(serverPref, serverValues[0])!!
 
-    override val client: OkHttpClient = super.client.newBuilder()
-        .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
-        .addInterceptor { chain ->
-            val request = chain.request()
-            val headers = request.headers.newBuilder()
-                .removeAll("Accept-Encoding")
-                .build()
+    override val client: OkHttpClient
+        get() = super.client.newBuilder()
+            .rateLimitHost(baseUrl.toHttpUrl(), 1, 1)
+            .addInterceptor { chain ->
+                val request = chain.request()
+                val headers = request.headers.newBuilder()
+                    .removeAll("Accept-Encoding")
+                    .build()
 
-            val newUrl = request.url.toString()
-                .replace("manhwa-latino.com", baseUrl.removePrefix("https://"))
-                .replace("manhwa-es.com", baseUrl.removePrefix("https://"))
-                .toHttpUrl()
+                val newUrl = request.url.toString()
+                    .replace("manhwa-latino.com", baseUrl.removePrefix("https://"))
+                    .replace("manhwa-es.com", baseUrl.removePrefix("https://"))
+                    .toHttpUrl()
 
-            val response = chain.proceed(
-                request.newBuilder()
-                    .url(newUrl)
-                    .headers(headers)
-                    .build(),
-            )
+                val response = chain.proceed(
+                        request.newBuilder()
+                        .url(newUrl)
+                        .headers(headers)
+                        .build(),
+                )
 
-            if (
-                response.headers("Content-Type").contains("application/octet-stream") &&
-                response.request.url.toString().endsWith(".jpg")
-            ) {
-                val newBody = response.body.source()
-                    .asResponseBody("image/jpeg".toMediaType())
+                if (
+                    response.headers("Content-Type").contains("application/octet-stream") &&
+                    response.request.url.toString().endsWith(".jpg")
+                ) {
+                    val newBody = response.body.source()
+                        .asResponseBody("image/jpeg".toMediaType())
 
-                response.newBuilder().body(newBody).build()
-            } else {
-                response
+                    response.newBuilder().body(newBody).build()
+                } else {
+                    response
+                }
             }
-        }
-        .build()
+            .build()
 
     override val useNewChapterEndpoint = true
 
