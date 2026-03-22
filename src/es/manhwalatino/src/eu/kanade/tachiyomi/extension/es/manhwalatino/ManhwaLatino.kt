@@ -16,10 +16,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.asResponseBody
 import org.jsoup.nodes.Element
-import java.text.SimpleDateFormat
-import java.util.Locale
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class ManhwaLatino :
     Madara(
@@ -65,7 +65,7 @@ class ManhwaLatino :
                     .toHttpUrl()
 
                 val response = chain.proceed(
-                        request.newBuilder()
+                    request.newBuilder()
                         .url(newUrl)
                         .headers(headers)
                         .build(),
