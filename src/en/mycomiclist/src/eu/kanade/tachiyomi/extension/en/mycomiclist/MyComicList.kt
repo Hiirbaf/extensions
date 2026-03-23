@@ -8,6 +8,7 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.ParsedHttpSource
+import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.Request
 import org.jsoup.nodes.Document
 
@@ -51,9 +52,8 @@ class MyComicList : ParsedHttpSource() {
 
         filters.forEach { filter ->
             when (filter) {
-                is GenreFilter -> {
-                    genre = filter.values[filter.state]
-                }
+                is GenreFilter -> genre = filter.values[filter.state]
+                else -> {}
             }
         }
 
@@ -115,7 +115,9 @@ class MyComicList : ParsedHttpSource() {
     // =========================
     // Capítulos
     // =========================
-    override fun chapterListParse(document: Document): List<SChapter> {
+    override fun chapterListParse(response: okhttp3.Response): List<SChapter> {
+        val document = response.asJsoup()
+
         return document.select("ul.basic-list li").mapIndexedNotNull { i, li ->
             val a = li.selectFirst("a.ch-name") ?: return@mapIndexedNotNull null
 
@@ -163,16 +165,18 @@ class MyComicList : ParsedHttpSource() {
 
     private fun fetchGenres(): List<Pair<String, String>> {
         val request = GET(baseUrl, headers)
-        val response = client.newCall(request).execute()
-        val doc = response.asJsoup()
 
-        return doc.select("div.cr-anime-box.genre-box a.genre-name").map {
-            val name = it.text()
-            val key = it.attr("href")
-                .substringAfterLast("/")
-                .substringBefore("-comic")
+        client.newCall(request).execute().use { response ->
+            val doc = response.asJsoup()
 
-            key to name
+            return doc.select("div.cr-anime-box.genre-box a.genre-name").map { element ->
+                val name = element.text()
+                val key = element.attr("href")
+                    .substringAfterLast("/")
+                    .substringBefore("-comic")
+
+                key to name
+            }
         }
     }
 
@@ -181,6 +185,6 @@ class MyComicList : ParsedHttpSource() {
             "Género",
             arrayOf("Todos") + genres.map { it.second }.toTypedArray(),
         ) {
-        val values = listOf("") + genres.map { it.first }
+        val keys = listOf("") + genres.map { it.first }
     }
 }
