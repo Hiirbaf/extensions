@@ -63,7 +63,7 @@ class MyComicList : HttpSource() {
             }
 
             !genre.isNullOrEmpty() -> {
-                "$baseUrl/${genre}-comic?page=$page"
+                "$baseUrl/" + genre + "-comic?page=$page"
             }
 
             else -> {
@@ -181,7 +181,7 @@ class MyComicList : HttpSource() {
                 val name = element.text()
                 val key = element.attr("href")
                     .substringAfterLast("/")
-                    .substringBefore("-comic")
+                    .removeSuffix("-comic")
 
                 key to name
             }
