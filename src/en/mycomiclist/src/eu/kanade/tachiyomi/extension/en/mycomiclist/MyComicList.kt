@@ -85,7 +85,7 @@ class MyComicList : HttpSource() {
     private fun parseMangaList(doc: Document): List<SManga> = doc.select("div.manga-box").map { div ->
         SManga.create().apply {
             title = div.selectFirst("h3 a")?.text().orEmpty()
-            url = div.selectFirst("a")?.attr("href").orEmpty()
+            url = div.selectFirst("a")?.attr("href")?.substringAfter(baseUrl).orEmpty()
             thumbnail_url = div.selectFirst("img.lazyload")?.attr("data-src")
         }
     }
@@ -127,7 +127,7 @@ class MyComicList : HttpSource() {
 
             SChapter.create().apply {
                 name = a.text()
-                url = a.attr("href")
+                url = a.attr("href").substringAfter(baseUrl)
                 chapter_number = name.substringAfter("#").toFloatOrNull() ?: (i + 1).toFloat()
             }
         }.reversed()
