@@ -97,7 +97,8 @@ class MyComicList : HttpSource() {
         val document = response.asJsoup()
 
         return SManga.create().apply {
-            title = document.selectFirst("h1")?.text().orEmpty()
+            title = document.selectFirst("td:contains(Name:) + td strong")?.text()
+                ?: document.selectFirst("h1")?.ownText().orEmpty()
 
             author = document.selectFirst("td:contains(Author:) + td")?.text()
 
@@ -112,7 +113,7 @@ class MyComicList : HttpSource() {
 
             description = document.selectFirst("div.manga-desc p.pdesc")?.text()
 
-            thumbnail_url = document.selectFirst("img")?.attr("src")
+            thumbnail_url = document.selectFirst("div.manga-cover img")?.attr("src")
         }
     }
 
