@@ -26,9 +26,7 @@ class MyComicList : ParsedHttpSource() {
     // =========================
     // Popular
     // =========================
-    override fun popularMangaRequest(page: Int): Request {
-        return GET("$baseUrl/popular-comic?page=$page", headers)
-    }
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/popular-comic?page=$page", headers)
 
     override fun popularMangaParse(response: okhttp3.Response): MangasPage {
         val doc = response.asJsoup()
@@ -38,9 +36,7 @@ class MyComicList : ParsedHttpSource() {
     // =========================
     // Latest
     // =========================
-    override fun latestUpdatesRequest(page: Int): Request {
-        return GET("$baseUrl/new-comic?page=$page", headers)
-    }
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/new-comic?page=$page", headers)
 
     override fun latestUpdatesParse(response: okhttp3.Response): MangasPage {
         val doc = response.asJsoup()
