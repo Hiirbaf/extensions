@@ -202,6 +202,5 @@ class MyComicList : HttpSource() {
         val keys = listOf("") + genres.map { it.first }
     }
 
-    class StateFilter :
-        Filter.Select<String>("Status", arrayOf("Any", "Ongoing", "Completed"))
+    class StateFilter : Filter.Select<String>("Status", arrayOf("Any", "Ongoing", "Completed"))
 }
