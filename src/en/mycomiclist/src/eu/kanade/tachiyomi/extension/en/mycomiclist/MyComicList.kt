@@ -131,7 +131,7 @@ class MyComicList : HttpSource() {
                 url = a.attr("href").substringAfter(baseUrl)
                 chapter_number = name.substringAfter("#").toFloatOrNull() ?: (i + 1).toFloat()
             }
-        }.reversed()
+        }
     }
 
     // =========================
