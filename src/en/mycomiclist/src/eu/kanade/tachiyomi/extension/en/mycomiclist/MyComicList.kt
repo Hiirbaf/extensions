@@ -82,38 +82,34 @@ class MyComicList : ParsedHttpSource() {
     // =========================
     // Lista de mangas
     // =========================
-    private fun parseMangaList(doc: Document): List<SManga> {
-        return doc.select("div.manga-box").map { div ->
-            SManga.create().apply {
-                title = div.selectFirst("h3 a")?.text().orEmpty()
-                url = div.selectFirst("a")!!.attr("href")
-                thumbnail_url = div.selectFirst("img.lazyload")?.attr("data-src")
-            }
+    private fun parseMangaList(doc: Document): List<SManga> = doc.select("div.manga-box").map { div ->
+        SManga.create().apply {
+            title = div.selectFirst("h3 a")?.text().orEmpty()
+            url = div.selectFirst("a")!!.attr("href")
+            thumbnail_url = div.selectFirst("img.lazyload")?.attr("data-src")
         }
     }
 
     // =========================
     // Detalles
     // =========================
-    override fun mangaDetailsParse(document: Document): SManga {
-        return SManga.create().apply {
-            title = document.selectFirst("h1")?.text().orEmpty()
+    override fun mangaDetailsParse(document: Document): SManga = SManga.create().apply {
+        title = document.selectFirst("h1")?.text().orEmpty()
 
-            author = document.selectFirst("td:contains(Author:) + td")?.text()
+        author = document.selectFirst("td:contains(Author:) + td")?.text()
 
-            genre = document.select("td:contains(Genres:) + td a")
-                .joinToString(", ") { it.text() }
+        genre = document.select("td:contains(Genres:) + td a")
+            .joinToString(", ") { it.text() }
 
-            status = when (document.selectFirst("td:contains(Status:) + td a")?.text()?.lowercase()) {
-                "ongoing" -> SManga.ONGOING
-                "completed" -> SManga.COMPLETED
-                else -> SManga.UNKNOWN
-            }
-
-            description = document.selectFirst("div.manga-desc p.pdesc")?.text()
-
-            thumbnail_url = document.selectFirst("img")?.attr("src")
+        status = when (document.selectFirst("td:contains(Status:) + td a")?.text()?.lowercase()) {
+            "ongoing" -> SManga.ONGOING
+            "completed" -> SManga.COMPLETED
+            else -> SManga.UNKNOWN
         }
+
+        description = document.selectFirst("div.manga-desc p.pdesc")?.text()
+
+        thumbnail_url = document.selectFirst("img")?.attr("src")
     }
 
     // =========================
@@ -134,20 +130,16 @@ class MyComicList : ParsedHttpSource() {
     // =========================
     // Request de páginas (/all)
     // =========================
-    override fun pageListRequest(chapter: SChapter): Request {
-        return GET(baseUrl + chapter.url + "/all", headers)
-    }
+    override fun pageListRequest(chapter: SChapter): Request = GET(baseUrl + chapter.url + "/all", headers)
 
     // =========================
     // Páginas
     // =========================
-    override fun pageListParse(document: Document): List<Page> {
-        return document.select("img.chapter_img.lazyload").mapIndexedNotNull { i, img ->
-            val url = img.attr("data-src")
-            if (url.isNullOrEmpty()) return@mapIndexedNotNull null
+    override fun pageListParse(document: Document): List<Page> = document.select("img.chapter_img.lazyload").mapIndexedNotNull { i, img ->
+        val url = img.attr("data-src")
+        if (url.isNullOrEmpty()) return@mapIndexedNotNull null
 
-            Page(i, "", url)
-        }
+        Page(i, "", url)
     }
 
     override fun imageUrlParse(document: Document): String {
