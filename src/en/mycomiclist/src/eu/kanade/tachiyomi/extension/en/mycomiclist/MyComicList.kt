@@ -93,23 +93,27 @@ class MyComicList : HttpSource() {
     // =========================
     // Detalles
     // =========================
-    override fun mangaDetailsParse(document: Document): SManga = SManga.create().apply {
-        title = document.selectFirst("h1")?.text().orEmpty()
+    override fun mangaDetailsParse(response: okhttp3.Response): SManga {
+        val document = response.asJsoup()
 
-        author = document.selectFirst("td:contains(Author:) + td")?.text()
+        return SManga.create().apply {
+            title = document.selectFirst("h1")?.text().orEmpty()
 
-        genre = document.select("td:contains(Genres:) + td a")
-            .joinToString(", ") { it.text() }
+            author = document.selectFirst("td:contains(Author:) + td")?.text()
 
-        status = when (document.selectFirst("td:contains(Status:) + td a")?.text()?.lowercase()) {
-            "ongoing" -> SManga.ONGOING
-            "completed" -> SManga.COMPLETED
-            else -> SManga.UNKNOWN
+            genre = document.select("td:contains(Genres:) + td a")
+                .joinToString(", ") { it.text() }
+
+            status = when (document.selectFirst("td:contains(Status:) + td a")?.text()?.lowercase()) {
+                "ongoing" -> SManga.ONGOING
+                "completed" -> SManga.COMPLETED
+                else -> SManga.UNKNOWN
+            }
+
+            description = document.selectFirst("div.manga-desc p.pdesc")?.text()
+
+            thumbnail_url = document.selectFirst("img")?.attr("src")
         }
-
-        description = document.selectFirst("div.manga-desc p.pdesc")?.text()
-
-        thumbnail_url = document.selectFirst("img")?.attr("src")
     }
 
     // =========================
@@ -137,14 +141,18 @@ class MyComicList : HttpSource() {
     // =========================
     // Páginas
     // =========================
-    override fun pageListParse(document: Document): List<Page> = document.select("img.chapter_img.lazyload").mapIndexedNotNull { i, img ->
-        val url = img.attr("data-src")
-        if (url.isNullOrEmpty()) return@mapIndexedNotNull null
+    override fun pageListParse(response: okhttp3.Response): List<Page> {
+        val document = response.asJsoup()
 
-        Page(i, "", url)
+        return document.select("img.chapter_img.lazyload").mapIndexedNotNull { i, img ->
+            val url = img.attr("data-src")
+            if (url.isNullOrEmpty()) return@mapIndexedNotNull null
+
+            Page(i, "", url)
+        }
     }
 
-    override fun imageUrlParse(document: Document): String = throw UnsupportedOperationException()
+    override fun imageUrlParse(response: okhttp3.Response): String = throw UnsupportedOperationException()
 
     // =========================
     // Filtros dinámicos
