@@ -66,6 +66,10 @@ class MyComicList : HttpSource() {
                 "$baseUrl/" + genre + "-comic?page=$page"
             }
 
+            statePath != null -> {
+                "$baseUrl/$statePath?page=$page"
+            }
+
             else -> {
                 "$baseUrl/ongoing-comic?page=$page"
             }
@@ -169,6 +173,7 @@ class MyComicList : HttpSource() {
 
         return FilterList(
             GenreFilter(genreList),
+            StateFilter(),
         )
     }
 
@@ -196,4 +201,7 @@ class MyComicList : HttpSource() {
         ) {
         val keys = listOf("") + genres.map { it.first }
     }
+
+    class StateFilter :
+        Filter.Select<String>("Status", arrayOf("Any", "Ongoing", "Completed"))
 }
