@@ -63,7 +63,7 @@ class MyComicList : HttpSource() {
             }
 
             !genre.isNullOrEmpty() -> {
-                "$baseUrl/$genre-comic?page=$page"
+                "$baseUrl/${genre}-comic?page=$page"
             }
 
             else -> {
