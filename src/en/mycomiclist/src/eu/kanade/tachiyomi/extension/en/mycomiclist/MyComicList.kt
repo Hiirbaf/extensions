@@ -63,7 +63,7 @@ class MyComicList : ParsedHttpSource() {
             }
 
             !genre.isNullOrEmpty() -> {
-                "$baseUrl/${genre}-comic?page=$page"
+                "$baseUrl/$genre-comic?page=$page"
             }
 
             else -> {
@@ -179,7 +179,7 @@ class MyComicList : ParsedHttpSource() {
     class GenreFilter(genres: List<Pair<String, String>>) :
         Filter.Select<String>(
             "Género",
-            arrayOf("Todos") + genres.map { it.second }.toTypedArray()
+            arrayOf("Todos") + genres.map { it.second }.toTypedArray(),
         ) {
         val values = listOf("") + genres.map { it.first }
     }
