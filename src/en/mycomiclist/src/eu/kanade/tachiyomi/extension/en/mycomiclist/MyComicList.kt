@@ -49,12 +49,20 @@ class MyComicList : HttpSource() {
     // =========================
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         var genre: String? = null
+        var state: Int = 0
 
         filters.forEach { filter ->
             when (filter) {
                 is GenreFilter -> genre = filter.keys[filter.state]
-                else -> {}
+                is StateFilter -> state = filter.state
+                else -> Unit
             }
+        }
+
+        val statePath = when (state) {
+            1 -> "ongoing-comic"
+            2 -> "completed-comic"
+            else -> null
         }
 
         val url = when {
