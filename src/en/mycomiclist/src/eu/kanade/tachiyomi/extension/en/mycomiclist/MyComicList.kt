@@ -24,6 +24,8 @@ class MyComicList : HttpSource() {
     // =========================
     private var genreList: List<Pair<String, String>> = emptyList()
 
+    private var fetchGenresAttempts = 0
+
     // =========================
     // Popular
     // =========================
@@ -171,18 +173,26 @@ class MyComicList : HttpSource() {
     // Filtros dinámicos
     // =========================
     override fun getFilterList(): FilterList {
-        if (genreList.isEmpty()) {
-            genreList = try {
-                fetchGenres()
-            } catch (e: Exception) {
-                emptyList()
+        if (genreList.isEmpty() && fetchGenresAttempts < 3) {
+            fetchGenresAttempts++
+
+            try {
+                genreList = fetchGenres()
+            } catch (_: Exception) {
             }
         }
 
-        return FilterList(
-            GenreFilter(genreList),
+        val filters = mutableListOf<Filter<*>>(
             StateFilter(),
         )
+
+        if (genreList.isNotEmpty()) {
+            filters.add(GenreFilter(genreList))
+        } else {
+            filters.add(Filter.Header("Press 'Reset' to attempt to load genres"))
+        }
+
+        return FilterList(filters)
     }
 
     private fun fetchGenres(): List<Pair<String, String>> {
