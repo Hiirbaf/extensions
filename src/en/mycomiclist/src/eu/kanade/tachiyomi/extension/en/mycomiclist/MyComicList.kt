@@ -142,9 +142,7 @@ class MyComicList : ParsedHttpSource() {
         Page(i, "", url)
     }
 
-    override fun imageUrlParse(document: Document): String {
-        throw UnsupportedOperationException()
-    }
+    override fun imageUrlParse(document: Document): String = throw UnsupportedOperationException()
 
     // =========================
     // Filtros dinámicos
@@ -159,7 +157,7 @@ class MyComicList : ParsedHttpSource() {
         }
 
         return FilterList(
-            GenreFilter(genreList)
+            GenreFilter(genreList),
         )
     }
 
