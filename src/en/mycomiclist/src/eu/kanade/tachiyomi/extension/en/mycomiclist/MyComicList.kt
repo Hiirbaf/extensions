@@ -52,7 +52,7 @@ class MyComicList : ParsedHttpSource() {
 
         filters.forEach { filter ->
             when (filter) {
-                is GenreFilter -> genre = filter.values[filter.state]
+                is GenreFilter -> genre = filter.keys[filter.state]
                 else -> {}
             }
         }
@@ -85,7 +85,7 @@ class MyComicList : ParsedHttpSource() {
     private fun parseMangaList(doc: Document): List<SManga> = doc.select("div.manga-box").map { div ->
         SManga.create().apply {
             title = div.selectFirst("h3 a")?.text().orEmpty()
-            url = div.selectFirst("a")!!.attr("href")
+            url = div.selectFirst("a")?.attr("href").orEmpty()
             thumbnail_url = div.selectFirst("img.lazyload")?.attr("data-src")
         }
     }
