@@ -13,7 +13,7 @@ class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/comic/?m_orderby=&page=$page", headers)
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        val url = "$baseUrl/comic/?s=${query}&post_type=wp-manga&page=$page"
+        val url = "$baseUrl/comic/?s=$query&post_type=wp-manga&page=$page"
         return GET(url, headers)
     }
 }
