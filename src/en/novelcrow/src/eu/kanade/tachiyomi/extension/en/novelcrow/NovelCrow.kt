@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension.en.novelcrow
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.FilterList
 import okhttp3.Request
 
 class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
@@ -10,4 +11,12 @@ class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/comic/?m_orderby=trending&page=$page", headers)
 
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/comic/?m_orderby=&page=$page", headers)
+
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        val url = "$baseUrl/comic/".toHttpUrl().newBuilder()
+        url.addQueryParameter("s", query)
+        url.addQueryParameter("post_type", "wp-manga")
+        url.addQueryParameter("page", page.toString())
+        return GET(url.build(), headers)
+    }
 }
