@@ -17,7 +17,7 @@ import java.util.Locale
 class ManhwaLatino :
     Madara(
         "Manhwa-Latino",
-        "https://manhwa-latino.com",
+        "https://manhwa-es.com",
         "es",
         SimpleDateFormat("dd/MM/yyyy", Locale("es")),
     ) {
