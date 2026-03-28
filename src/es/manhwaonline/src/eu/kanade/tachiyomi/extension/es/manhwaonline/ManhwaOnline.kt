@@ -32,16 +32,17 @@ class ManhwaOnline :
             val imgCount = document.select(".wp-manga-chapter-img").size
             val k = (imgCount xor 4) xor imgCount
 
-            // 4️⃣ Función de desencriptado
-            fun decodeX(s: String): String {
+            // 4️⃣ Función de desencriptado compatible con JS/UTF-8
+            fun decodeX(s: String, k: Int): String {
                 val decoded = Base64.decode(s, Base64.DEFAULT)
-                return decoded.map { (it.toInt() xor k).toChar() }.joinToString("")
+                val bytes = decoded.map { (it.toInt() xor k).toByte() }.toByteArray()
+                return String(bytes, Charsets.UTF_8)
             }
 
             // 5️⃣ Generar lista de Page
             arrayD.forEachIndexed { index, encoded ->
                 if (encoded.isNotEmpty()) {
-                    val url = decodeX(encoded)
+                    val url = decodeX(encoded, k)
                     pages.add(Page(index, "", url))
                 }
             }
