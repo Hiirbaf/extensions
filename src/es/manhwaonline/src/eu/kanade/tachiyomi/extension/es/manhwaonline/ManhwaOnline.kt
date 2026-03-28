@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.extension.es.manhwaonline
 
 import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.madara.Madara
-import eu.kanade.tachiyomi.multisrc.madara.MadaraChapter
 import eu.kanade.tachiyomi.source.model.Page
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
@@ -17,10 +16,6 @@ class ManhwaOnline :
     ) {
     override val useLoadMoreRequest = LoadMoreStrategy.Never
     override val useNewChapterEndpoint = true
-
-    override fun pageListRequest(chapter: MadaraChapter) = super.pageListRequest(chapter).also {
-        // Esto no es necesario si sobreescribimos pageListParse
-    }
 
     override fun pageListParse(document: Document): List<Page> {
         val pages = mutableListOf<Page>()
