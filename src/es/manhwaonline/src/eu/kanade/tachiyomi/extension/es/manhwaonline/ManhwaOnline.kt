@@ -1,13 +1,12 @@
 package eu.kanade.tachiyomi.extension.es.manhwaonline
 
+import android.util.Base64
 import eu.kanade.tachiyomi.multisrc.madara.Madara
 import eu.kanade.tachiyomi.multisrc.madara.MadaraChapter
 import eu.kanade.tachiyomi.source.model.Page
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.text.SimpleDateFormat
 import java.util.Locale
-import android.util.Base64
 
 class ManhwaOnline :
     Madara(
