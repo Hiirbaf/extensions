@@ -28,9 +28,12 @@ class ManhwaOnline :
             val matchD = regexD.find(shieldScript)?.groups?.get(1)?.value
             val arrayD = matchD?.split(",")?.map { it.trim().trim('"') } ?: emptyList()
 
-            // 3️⃣ Calcular _k
+            // 3️⃣ Calcular _k dinámicamente por capítulo
             val imgCount = document.select(".wp-manga-chapter-img").size
-            val k = (imgCount xor 4) xor imgCount
+            val kRegex = Regex("""var _k=\(function\(\)\{.*?return\(a\^(\d+)\)\^a;""")
+            val kMatch = kRegex.find(shieldScript)
+            val xorConst = kMatch?.groups?.get(1)?.value?.toIntOrNull() ?: 4
+            val k = (imgCount xor xorConst) xor imgCount
 
             // 4️⃣ Función de desencriptado compatible con JS/UTF-8
             fun decodeX(s: String, k: Int): String {
@@ -46,11 +49,11 @@ class ManhwaOnline :
                     pages.add(Page(index, "", url))
                 }
             }
+
+            return pages
         } else {
             // Fallback a Madara normal (por si el script no existe)
             return super.pageListParse(document)
         }
-
-        return pages
     }
 }
