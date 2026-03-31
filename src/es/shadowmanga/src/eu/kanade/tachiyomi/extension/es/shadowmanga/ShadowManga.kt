@@ -27,6 +27,7 @@ class ShadowManga :
 
     override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {}
 
+    // ----------------- SEARCH URL -----------------
     private fun buildSearchUrl(query: String, filters: FilterList): String {
         val selectedGenres = (filters.find { it is GenreFilter } as? GenreFilter)
             ?.state
@@ -61,11 +62,16 @@ class ShadowManga :
 
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = GET(buildSearchUrl(query, filters), headers)
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        val url = buildSearchUrl(query, filters)
+        return GET(url, headers)
+    }
 
     // ----------------- PARSERS -----------------
     override fun popularMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
+
     override fun latestUpdatesParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
+
     override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
@@ -101,7 +107,7 @@ class ShadowManga :
         return manga
     }
 
-    // ----------------- CAPÍTULOS -----------------
+    // ----------------- CHAPTERS -----------------
     override fun chapterListRequest(manga: SManga): Request {
         val id = manga.url.split("/").last()
         return GET("$baseUrl/api/series-locales/$id/capitulos", headers)
@@ -127,7 +133,7 @@ class ShadowManga :
         return chapter
     }
 
-    // ----------------- PÁGINAS -----------------
+    // ----------------- PAGES -----------------
     override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl${chapter.url}", headers)
 
     override fun pageListParse(response: okhttp3.Response): List<Page> {
@@ -142,30 +148,35 @@ class ShadowManga :
 
     override fun imageUrlParse(response: okhttp3.Response): String = ""
 
-    // ----------------- FILTROS -----------------
-    companion object {
-        val genres = listOf(
-            "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
-            "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
-            "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
-            "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
-            "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
-            "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
-        )
-    }
+    // ----------------- FILTERS -----------------
+    override fun getFilterList() = FilterList(
+        GenreFilter(),
+        StatusFilter(),
+        AdultFilter(),
+    )
 }
 
-// ----------------- FILTROS -----------------
-class GenreFilter :
+// ----------------- FILTER CLASSES -----------------
+private class GenreFilter :
     Filter.Group<Filter.CheckBox>(
         "Géneros",
         ShadowManga.genres.map { Filter.CheckBox(it, false) },
     )
 
-class StatusFilter :
+private class StatusFilter :
     Filter.Select<String>(
         "Estado",
         arrayOf("Todos", "En curso", "Completado"),
     )
 
-class AdultFilter : Filter.TriState("Mostrar contenido adulto")
+private class AdultFilter : Filter.TriState("Mostrar contenido adulto")
+
+// ----------------- GENRES LIST -----------------
+private val ShadowManga.Companion.genres = listOf(
+    "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
+    "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
+    "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
+    "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
+    "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
+    "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
+)
