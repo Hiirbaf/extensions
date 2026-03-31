@@ -137,21 +137,23 @@ class ShadowManga :
         "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
     )
 
-    class GenreFilter : Filter.Group<Filter.CheckBox>(
-        "Géneros",
-        genres.map { Filter.CheckBox(it, false) },
-    )
+    class GenreFilter :
+        Filter.Group<Filter.CheckBox>(
+            "Géneros",
+            genres.map { Filter.CheckBox(it, false) },
+        )
 
-    class StatusFilter : Filter.Select<String>(
-        "Estado",
-        arrayOf("Todos", "En curso", "Completado")
-    )
+    class StatusFilter :
+        Filter.Select<String>(
+            "Estado",
+            arrayOf("Todos", "En curso", "Completado")
+        )
 
     class AdultFilter : Filter.TriState("Mostrar contenido adulto")
 
     override fun getFilterList() = FilterList(
         GenreFilter(),
         StatusFilter(),
-        AdultFilter()
+        AdultFilter(),
     )
 }
