@@ -82,17 +82,15 @@ class ShadowManga :
 
     override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
-    private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
+    private fun parseMangasResponse(response: okhttp3.Response, isSearch: Boolean = false): MangasPage {
         val body = response.body!!.string()
         val jsonArray = org.json.JSONArray(body)
-
         val mangasMap = linkedMapOf<String, SManga>()
 
         for (i in 0 until jsonArray.length()) {
             val obj = jsonArray.getJSONObject(i)
 
             if (obj.has("series")) {
-                // Popular / Latest
                 val seriesArray = obj.getJSONArray("series")
                 for (j in 0 until seriesArray.length()) {
                     val item = seriesArray.getJSONObject(j)
@@ -100,13 +98,12 @@ class ShadowManga :
                     mangasMap[manga.url] = manga
                 }
             } else {
-                // Search → objeto directo
                 val manga = parseManga(obj)
                 mangasMap[manga.url] = manga
             }
         }
 
-        return MangasPage(mangasMap.values.toList(), mangasMap.isNotEmpty())
+        return MangasPage(mangasMap.values.toList(), !isSearch) // si es search → false
     }
 
     private fun parseManga(item: JSONObject): SManga {
