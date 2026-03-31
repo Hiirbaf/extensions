@@ -10,7 +10,9 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONObject
+import rx.Observable
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -25,49 +27,46 @@ class ShadowManga :
     override val client: OkHttpClient = network.client
 
     override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {
-        // Si no hay preferencias adicionales, se deja vacío
+        // Por ahora vacío
     }
 
-    // ----------------- BUSQUEDA -----------------
-    override suspend fun fetchSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
+    // ----------------- REQUESTS -----------------
+    override fun popularMangaRequest(page: Int): Request {
+        // Puedes definir cómo obtener los populares, o usar búsqueda vacía
+        return GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    }
+
+    override fun latestUpdatesRequest(page: Int): Request {
+        return GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    }
+
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = buildSearchUrl(query, filters)
-        val response = client.newCall(GET(url)).execute()
-        val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
+        return GET(url, headers)
+    }
+
+    // ----------------- PARSERS -----------------
+    override fun popularMangaParse(response: okhttp3.Response): MangasPage {
+        return parseMangasResponse(response)
+    }
+
+    override fun latestUpdatesParse(response: okhttp3.Response): MangasPage {
+        return parseMangasResponse(response)
+    }
+
+    override fun searchMangaParse(response: okhttp3.Response): MangasPage {
+        return parseMangasResponse(response)
+    }
+
+    private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
+        val body = response.body!!.string()
+        val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
         val mangas = mutableListOf<SManga>()
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
             mangas.add(parseManga(item))
         }
         return MangasPage(mangas, mangas.isNotEmpty())
-    }
-
-    private fun buildSearchUrl(query: String, filters: FilterList): String {
-        val selectedGenres = (filters.find { it is GenreFilter } as? GenreFilter)
-            ?.state
-            ?.filter { it.state }
-            ?.joinToString(",") { it.name } ?: ""
-
-        val statusFilter = filters.find { it is StatusFilter } as? StatusFilter
-        val status = when (statusFilter?.state) {
-            1 -> "En curso"
-            2 -> "Completado"
-            else -> ""
-        }
-
-        val adultFilter = filters.find { it is AdultFilter } as? AdultFilter
-        val includeAdult = when (adultFilter?.state) {
-            Filter.TriState.STATE_INCLUDE -> true
-            Filter.TriState.STATE_EXCLUDE -> false
-            else -> false
-        }
-
-        return "$baseUrl/api/series-locales/search-candidates?" +
-            "q=$query" +
-            "&tags=$selectedGenres" +
-            "&estado=$status" +
-            "&includeAdult=$includeAdult" +
-            "&showSinPortada=false" +
-            "&take=120"
     }
 
     private fun parseManga(item: JSONObject): SManga {
@@ -78,10 +77,8 @@ class ShadowManga :
         return manga
     }
 
-    // ----------------- DETALLE -----------------
-    override suspend fun fetchMangaDetails(manga: SManga): SManga {
-        val url = "$baseUrl${manga.url}"
-        val response = client.newCall(GET(url)).execute()
+    override fun mangaDetailsParse(response: okhttp3.Response): SManga {
+        val manga = SManga.create()
         val json = JSONObject(response.body!!.string())
         manga.author = json.optString("autor")
         manga.genre = json.optJSONArray("generos")?.join(", ")
@@ -95,10 +92,14 @@ class ShadowManga :
     }
 
     // ----------------- CAPÍTULOS -----------------
-    override suspend fun fetchChapterList(manga: SManga): List<SChapter> {
-        val url = "$baseUrl/api/series-locales/${manga.url.split("/").last()}/capitulos"
-        val response = client.newCall(GET(url)).execute()
-        val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
+    override fun chapterListRequest(manga: SManga): Request {
+        val id = manga.url.split("/").last()
+        return GET("$baseUrl/api/series-locales/$id/capitulos", headers)
+    }
+
+    override fun chapterListParse(response: okhttp3.Response): List<SChapter> {
+        val body = response.body!!.string()
+        val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
         val chapters = mutableListOf<SChapter>()
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
@@ -117,9 +118,11 @@ class ShadowManga :
     }
 
     // ----------------- PÁGINAS -----------------
-    override suspend fun fetchPageList(chapter: SChapter): List<Page> {
-        val url = "$baseUrl${chapter.url}"
-        val response = client.newCall(GET(url)).execute()
+    override fun pageListRequest(chapter: SChapter): Request {
+        return GET("$baseUrl${chapter.url}", headers)
+    }
+
+    override fun pageListParse(response: okhttp3.Response): List<Page> {
         val json = JSONObject(response.body!!.string())
         val pagesJson = json.getJSONArray("paginas")
         val pages = mutableListOf<Page>()
@@ -127,6 +130,11 @@ class ShadowManga :
             pages.add(Page(i, "", pagesJson.getString(i)))
         }
         return pages
+    }
+
+    override fun imageUrlParse(response: okhttp3.Response): String {
+        // No se usa, las URLs ya vienen en pageListParse
+        return ""
     }
 
     // ----------------- FILTROS -----------------
@@ -139,23 +147,21 @@ class ShadowManga :
         "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
     )
 
-    class GenreFilter :
-        Filter.Group<Filter.CheckBox>(
-            "Géneros",
-            genres.map { Filter.CheckBox(it, false) },
-        )
+    class GenreFilter : Filter.Group<Filter.CheckBox>(
+        "Géneros",
+        genres.map { Filter.CheckBox(it, false) }
+    )
 
-    class StatusFilter :
-        Filter.Select<String>(
-            "Estado",
-            arrayOf("Todos", "En curso", "Completado"),
-        )
+    class StatusFilter : Filter.Select<String>(
+        "Estado",
+        arrayOf("Todos", "En curso", "Completado")
+    )
 
     class AdultFilter : Filter.TriState("Mostrar contenido adulto")
 
     override fun getFilterList() = FilterList(
         GenreFilter(),
         StatusFilter(),
-        AdultFilter(),
+        AdultFilter()
     )
 }
