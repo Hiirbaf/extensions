@@ -29,6 +29,35 @@ class ShadowManga :
         // Por ahora vacío
     }
 
+    private fun buildSearchUrl(query: String, filters: FilterList): String {
+        val selectedGenres = (filters.find { it is GenreFilter } as? GenreFilter)
+            ?.state
+            ?.filter { it.state }
+            ?.joinToString(",") { it.name } ?: ""
+
+        val statusFilter = filters.find { it is StatusFilter } as? StatusFilter
+        val status = when (statusFilter?.state) {
+            1 -> "En curso"
+            2 -> "Completado"
+            else -> ""
+        }
+
+        val adultFilter = filters.find { it is AdultFilter } as? AdultFilter
+        val includeAdult = when (adultFilter?.state) {
+            Filter.TriState.STATE_INCLUDE -> true
+            Filter.TriState.STATE_EXCLUDE -> false
+            else -> false
+        }
+
+        return "$baseUrl/api/series-locales/search-candidates?" +
+            "q=$query" +
+            "&tags=$selectedGenres" +
+            "&estado=$status" +
+            "&includeAdult=$includeAdult" +
+            "&showSinPortada=false" +
+            "&take=120"
+    }
+
     // ----------------- REQUESTS -----------------
     override fun popularMangaRequest(page: Int): Request {
         // Puedes definir cómo obtener los populares, o usar búsqueda vacía
@@ -127,28 +156,16 @@ class ShadowManga :
     }
 
     // ----------------- FILTROS -----------------
-    private val genres = listOf(
-        "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
-        "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
-        "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
-        "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
-        "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
-        "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
-    )
-
-    class GenreFilter :
-        Filter.Group<Filter.CheckBox>(
-            "Géneros",
-            genres.map { Filter.CheckBox(it, false) },
+    companion object {
+        val genres = listOf(
+            "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
+            "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
+            "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
+            "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
+            "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
+            "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
         )
-
-    class StatusFilter :
-        Filter.Select<String>(
-            "Estado",
-            arrayOf("Todos", "En curso", "Completado"),
-        )
-
-    class AdultFilter : Filter.TriState("Mostrar contenido adulto")
+    }
 
     override fun getFilterList() = FilterList(
         GenreFilter(),
@@ -156,3 +173,16 @@ class ShadowManga :
         AdultFilter(),
     )
 }
+class GenreFilter :
+    Filter.Group<Filter.CheckBox>(
+        "Géneros",
+        ShadowManga.genres { Filter.CheckBox(it, false) },
+    )
+
+class StatusFilter :
+    Filter.Select<String>(
+        "Estado",
+        arrayOf("Todos", "En curso", "Completado"),
+    )
+
+class AdultFilter : Filter.TriState("Mostrar contenido adulto")
