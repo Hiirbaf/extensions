@@ -136,7 +136,7 @@ class ShadowManga : ConfigurableSource, HttpSource() {
     }
 
     // ----------------- FILTROS -----------------
-    private val GENRES = listOf(
+    private val genres = listOf(
         "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
         "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
         "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
@@ -147,7 +147,7 @@ class ShadowManga : ConfigurableSource, HttpSource() {
 
     class GenreFilter : Filter.Group<Filter.CheckBox>(
         "Géneros",
-        GENRES.map { Filter.CheckBox(it, false) }
+        genres.map { Filter.CheckBox(it, false) }
     )
 
     class StatusFilter : Filter.Select<String>(
