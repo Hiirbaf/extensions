@@ -84,13 +84,20 @@ class ShadowManga :
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
         val body = response.body!!.string()
-        val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
-        val mangas = mutableListOf<SManga>()
+        val jsonArray = JSONObject(body).getJSONArray("data")
+        val mangasMap = linkedMapOf<String, SManga>()
+
         for (i in 0 until jsonArray.length()) {
-            val item = jsonArray.getJSONObject(i)
-            mangas.add(parseManga(item))
+            val genreObj = jsonArray.getJSONObject(i)
+            val seriesArray = genreObj.getJSONArray("series")
+            for (j in 0 until seriesArray.length()) {
+                val item = seriesArray.getJSONObject(j)
+                val manga = parseManga(item)
+                mangasMap[manga.url] = manga // evita duplicados
+            }
         }
-        return MangasPage(mangas, mangas.isNotEmpty())
+
+        return MangasPage(mangasMap.values.toList(), mangasMap.isNotEmpty())
     }
 
     private fun parseManga(item: JSONObject): SManga {
