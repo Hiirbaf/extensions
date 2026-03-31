@@ -11,7 +11,6 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
 import org.json.JSONObject
-import rx.Observable
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -25,20 +24,21 @@ class ShadowManga :
     override val supportsLatest = true
     override val client: OkHttpClient = network.client
 
+    override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {
+        // Si no hay preferencias adicionales, se deja vacío
+    }
+
     // ----------------- BUSQUEDA -----------------
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+    override suspend fun fetchSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
         val url = buildSearchUrl(query, filters)
-        return client.newCall(GET(url))
-            .asObservable()
-            .map { response ->
-                val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
-                val mangas = mutableListOf<SManga>()
-                for (i in 0 until jsonArray.length()) {
-                    val item = jsonArray.getJSONObject(i)
-                    mangas.add(parseManga(item))
-                }
-                MangasPage(mangas, mangas.isNotEmpty())
-            }
+        val response = client.newCall(GET(url)).execute()
+        val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
+        val mangas = mutableListOf<SManga>()
+        for (i in 0 until jsonArray.length()) {
+            val item = jsonArray.getJSONObject(i)
+            mangas.add(parseManga(item))
+        }
+        return MangasPage(mangas, mangas.isNotEmpty())
     }
 
     private fun buildSearchUrl(query: String, filters: FilterList): String {
@@ -79,38 +79,32 @@ class ShadowManga :
     }
 
     // ----------------- DETALLE -----------------
-    override fun fetchMangaDetails(manga: SManga): Observable<SManga> {
+    override suspend fun fetchMangaDetails(manga: SManga): SManga {
         val url = "$baseUrl${manga.url}"
-        return client.newCall(GET(url))
-            .asObservable()
-            .map { response ->
-                val json = JSONObject(response.body!!.string())
-                manga.author = json.optString("autor")
-                manga.genre = json.optJSONArray("generos")?.join(", ")
-                manga.status = when (json.optString("estado")) {
-                    "Completado" -> SManga.COMPLETED
-                    "En curso" -> SManga.ONGOING
-                    else -> SManga.UNKNOWN
-                }
-                manga.description = ""
-                manga
-            }
+        val response = client.newCall(GET(url)).execute()
+        val json = JSONObject(response.body!!.string())
+        manga.author = json.optString("autor")
+        manga.genre = json.optJSONArray("generos")?.join(", ")
+        manga.status = when (json.optString("estado")) {
+            "Completado" -> SManga.COMPLETED
+            "En curso" -> SManga.ONGOING
+            else -> SManga.UNKNOWN
+        }
+        manga.description = ""
+        return manga
     }
 
     // ----------------- CAPÍTULOS -----------------
-    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> {
+    override suspend fun fetchChapterList(manga: SManga): List<SChapter> {
         val url = "$baseUrl/api/series-locales/${manga.url.split("/").last()}/capitulos"
-        return client.newCall(GET(url))
-            .asObservable()
-            .map { response ->
-                val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
-                val chapters = mutableListOf<SChapter>()
-                for (i in 0 until jsonArray.length()) {
-                    val item = jsonArray.getJSONObject(i)
-                    chapters.add(parseChapter(item))
-                }
-                chapters
-            }
+        val response = client.newCall(GET(url)).execute()
+        val jsonArray = JSONObject("{\"data\":${response.body!!.string()}}").getJSONArray("data")
+        val chapters = mutableListOf<SChapter>()
+        for (i in 0 until jsonArray.length()) {
+            val item = jsonArray.getJSONObject(i)
+            chapters.add(parseChapter(item))
+        }
+        return chapters
     }
 
     private fun parseChapter(item: JSONObject): SChapter {
@@ -123,19 +117,16 @@ class ShadowManga :
     }
 
     // ----------------- PÁGINAS -----------------
-    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> {
+    override suspend fun fetchPageList(chapter: SChapter): List<Page> {
         val url = "$baseUrl${chapter.url}"
-        return client.newCall(GET(url))
-            .asObservable()
-            .map { response ->
-                val json = JSONObject(response.body!!.string())
-                val pagesJson = json.getJSONArray("paginas")
-                val pages = mutableListOf<Page>()
-                for (i in 0 until pagesJson.length()) {
-                    pages.add(Page(i, "", pagesJson.getString(i)))
-                }
-                pages
-            }
+        val response = client.newCall(GET(url)).execute()
+        val json = JSONObject(response.body!!.string())
+        val pagesJson = json.getJSONArray("paginas")
+        val pages = mutableListOf<Page>()
+        for (i in 0 until pagesJson.length()) {
+            pages.add(Page(i, "", pagesJson.getString(i)))
+        }
+        return pages
     }
 
     // ----------------- FILTROS -----------------
