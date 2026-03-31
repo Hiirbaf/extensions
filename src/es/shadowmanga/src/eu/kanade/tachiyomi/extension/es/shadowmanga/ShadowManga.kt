@@ -25,9 +25,7 @@ class ShadowManga :
     override val supportsLatest = true
     override val client: OkHttpClient = network.client
 
-    override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {
-        // Por ahora vacío
-    }
+    override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {}
 
     private fun buildSearchUrl(query: String, filters: FilterList): String {
         val selectedGenres = (filters.find { it is GenreFilter } as? GenreFilter)
@@ -59,23 +57,15 @@ class ShadowManga :
     }
 
     // ----------------- REQUESTS -----------------
-    override fun popularMangaRequest(page: Int): Request {
-        // Puedes definir cómo obtener los populares, o usar búsqueda vacía
-        return GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
-    }
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        val url = buildSearchUrl(query, filters)
-        return GET(url, headers)
-    }
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = GET(buildSearchUrl(query, filters), headers)
 
     // ----------------- PARSERS -----------------
     override fun popularMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
-
     override fun latestUpdatesParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
-
     override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
@@ -150,10 +140,7 @@ class ShadowManga :
         return pages
     }
 
-    override fun imageUrlParse(response: okhttp3.Response): String {
-        // No se usa, las URLs ya vienen en pageListParse
-        return ""
-    }
+    override fun imageUrlParse(response: okhttp3.Response): String = ""
 
     // ----------------- FILTROS -----------------
     companion object {
@@ -166,17 +153,13 @@ class ShadowManga :
             "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
         )
     }
-
-    override fun getFilterList() = FilterList(
-        GenreFilter(),
-        StatusFilter(),
-        AdultFilter(),
-    )
 }
+
+// ----------------- FILTROS -----------------
 class GenreFilter :
     Filter.Group<Filter.CheckBox>(
         "Géneros",
-        ShadowManga.genres { Filter.CheckBox(it, false) },
+        ShadowManga.genres.map { Filter.CheckBox(it, false) },
     )
 
 class StatusFilter :
