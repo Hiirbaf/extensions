@@ -12,7 +12,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import rx.Observable
 import java.text.SimpleDateFormat
 import java.util.Locale
 
