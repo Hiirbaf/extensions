@@ -66,9 +66,9 @@ class ShadowManga :
     }
 
     // ----------------- REQUESTS -----------------
-    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/series-locales/popular", headers)
 
-    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/novedades", headers)
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = buildSearchUrl(query, filters)
@@ -84,12 +84,23 @@ class ShadowManga :
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
         val body = response.body!!.string()
-        val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
-        val mangas = mutableListOf<SManga>()
+        val json = JSONObject(body)
+
+        // Aseguramos que jsonArray siempre sea un JSONArray
+        val jsonArray = when {
+            json.has("data") && json.get("data") is org.json.JSONArray -> json.getJSONArray("data")
+            else -> org.json.JSONArray().put(json) // si solo es un objeto único, lo convertimos en array
+        }
+
+        val mangasMap = linkedMapOf<String, SManga>() // clave: url para evitar duplicados
+
         for (i in 0 until jsonArray.length()) {
             val item = jsonArray.getJSONObject(i)
-            mangas.add(parseManga(item))
+            val manga = parseManga(item)
+            mangasMap[manga.url] = manga // si ya existe, lo sobrescribe
         }
+
+        val mangas = mangasMap.values.toList()
         return MangasPage(mangas, mangas.isNotEmpty())
     }
 
