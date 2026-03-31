@@ -1,20 +1,19 @@
 package eu.kanade.tachiyomi.extension.es.shadowmanga
 
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.source.model.Cover
-import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 import org.json.JSONObject
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
-class ShadowManga : ConfigurableSource, HttpSource() {
+class ShadowManga :
+    ConfigurableSource,
+    HttpSource() {
 
     override val name = "ShadowManga"
     override val baseUrl = "https://shadowmanga.es"
@@ -59,12 +58,12 @@ class ShadowManga : ConfigurableSource, HttpSource() {
         }
 
         return "$baseUrl/api/series-locales/search-candidates?" +
-                "q=$query" +
-                "&tags=$selectedGenres" +
-                "&estado=$status" +
-                "&includeAdult=$includeAdult" +
-                "&showSinPortada=false" +
-                "&take=120"
+            "q=$query" +
+            "&tags=$selectedGenres" +
+            "&estado=$status" +
+            "&includeAdult=$includeAdult" +
+            "&showSinPortada=false" +
+            "&take=120"
     }
 
     private fun parseManga(item: JSONObject): SManga {
@@ -142,7 +141,7 @@ class ShadowManga : ConfigurableSource, HttpSource() {
         "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
         "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
         "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
-        "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua"
+        "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
     )
 
     class GenreFilter : Filter.Group<Filter.CheckBox>(
@@ -152,7 +151,7 @@ class ShadowManga : ConfigurableSource, HttpSource() {
 
     class StatusFilter : Filter.Select<String>(
         "Estado",
-        arrayOf("Todos", "En curso", "Completado")
+        arrayOf("Todos", "En curso", "Completado"),
     )
 
     class AdultFilter : Filter.TriState("Mostrar contenido adulto")
