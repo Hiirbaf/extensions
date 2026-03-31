@@ -5,15 +5,13 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.jsoup.Jsoup
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 class ShadowManga :
-    ConfigurableSource,
-    HttpSource() {
+    HttpSource(),
+    ConfigurableSource {
 
     override val name = "ShadowManga"
     override val baseUrl = "https://shadowmanga.es"
@@ -144,21 +142,23 @@ class ShadowManga :
         "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
     )
 
-    class GenreFilter : Filter.Group<Filter.CheckBox>(
-        "Géneros",
-        genres.map { Filter.CheckBox(it, false) }
-    )
+    class GenreFilter :
+        Filter.Group<Filter.CheckBox>(
+            "Géneros",
+            genres.map { Filter.CheckBox(it, false) }
+        )
 
-    class StatusFilter : Filter.Select<String>(
-        "Estado",
-        arrayOf("Todos", "En curso", "Completado"),
-    )
+    class StatusFilter :
+        Filter.Select<String>(
+            "Estado",
+            arrayOf("Todos", "En curso", "Completado"),
+        )
 
     class AdultFilter : Filter.TriState("Mostrar contenido adulto")
 
     override fun getFilterList() = FilterList(
         GenreFilter(),
         StatusFilter(),
-        AdultFilter()
+        AdultFilter(),
     )
 }
