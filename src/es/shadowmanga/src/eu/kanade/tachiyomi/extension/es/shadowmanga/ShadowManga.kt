@@ -24,7 +24,9 @@ private val genres = listOf(
     "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
 )
 
-class ShadowManga : HttpSource(), ConfigurableSource {
+class ShadowManga :
+    HttpSource(),
+    ConfigurableSource {
 
     override val name = "ShadowManga"
     override val baseUrl = "https://shadowmanga.es"
@@ -64,11 +66,9 @@ class ShadowManga : HttpSource(), ConfigurableSource {
     }
 
     // ----------------- REQUESTS -----------------
-    override fun popularMangaRequest(page: Int): Request =
-        GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
-    override fun latestUpdatesRequest(page: Int): Request =
-        GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = buildSearchUrl(query, filters)
@@ -77,7 +77,9 @@ class ShadowManga : HttpSource(), ConfigurableSource {
 
     // ----------------- PARSERS -----------------
     override fun popularMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
+
     override fun latestUpdatesParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
+
     override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
@@ -85,7 +87,8 @@ class ShadowManga : HttpSource(), ConfigurableSource {
         val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
         val mangas = mutableListOf<SManga>()
         for (i in 0 until jsonArray.length()) {
-            mangas.add(parseManga(jsonArray.getJSONObject(i)))
+            val item = jsonArray.getJSONObject(i)
+            mangas.add(parseManga(item))
         }
         return MangasPage(mangas, mangas.isNotEmpty())
     }
@@ -102,9 +105,7 @@ class ShadowManga : HttpSource(), ConfigurableSource {
         val manga = SManga.create()
         val json = JSONObject(response.body!!.string())
         manga.author = json.optString("autor")
-        manga.genre = json.optJSONArray("generos")?.let { array ->
-            (0 until array.length()).map { array.getString(it) }.joinToString(", ")
-        }
+        manga.genre = json.optJSONArray("generos")?.join(", ")
         manga.status = when (json.optString("estado")) {
             "Completado" -> SManga.COMPLETED
             "En curso" -> SManga.ONGOING
@@ -123,14 +124,19 @@ class ShadowManga : HttpSource(), ConfigurableSource {
     override fun chapterListParse(response: okhttp3.Response): List<SChapter> {
         val body = response.body!!.string()
         val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
-        return List(jsonArray.length()) { i -> parseChapter(jsonArray.getJSONObject(i)) }
+        val chapters = mutableListOf<SChapter>()
+        for (i in 0 until jsonArray.length()) {
+            val item = jsonArray.getJSONObject(i)
+            chapters.add(parseChapter(item))
+        }
+        return chapters
     }
 
     private fun parseChapter(item: JSONObject): SChapter {
         val chapter = SChapter.create()
         chapter.name = item.getString("titulo")
         chapter.url = "/series-locales/${item.getInt("idSerie")}/capitulos/${item.getInt("id")}/paginas"
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.ENGLISH)
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS", Locale.ENGLISH)
         chapter.date_upload = sdf.parse(item.optString("fechaActualizacion"))?.time ?: 0
         return chapter
     }
@@ -141,7 +147,11 @@ class ShadowManga : HttpSource(), ConfigurableSource {
     override fun pageListParse(response: okhttp3.Response): List<Page> {
         val json = JSONObject(response.body!!.string())
         val pagesJson = json.getJSONArray("paginas")
-        return List(pagesJson.length()) { i -> Page(i, "", pagesJson.getString(i)) }
+        val pages = mutableListOf<Page>()
+        for (i in 0 until pagesJson.length()) {
+            pages.add(Page(i, "", pagesJson.getString(i)))
+        }
+        return pages
     }
 
     override fun imageUrlParse(response: okhttp3.Response): String = ""
