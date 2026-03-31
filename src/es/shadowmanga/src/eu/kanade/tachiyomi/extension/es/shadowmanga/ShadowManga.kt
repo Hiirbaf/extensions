@@ -145,7 +145,7 @@ class ShadowManga :
     class GenreFilter :
         Filter.Group<Filter.CheckBox>(
             "Géneros",
-            genres.map { Filter.CheckBox(it, false) }
+            genres.map { Filter.CheckBox(it, false) },
         )
 
     class StatusFilter :
