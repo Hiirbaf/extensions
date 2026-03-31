@@ -103,7 +103,7 @@ class ShadowManga :
             }
         }
 
-        return MangasPage(mangasMap.values.toList(), !isSearch) // si es search → false
+        return MangasPage(mangasMap.values.toList(), false)
     }
 
     private fun parseManga(item: JSONObject): SManga {
