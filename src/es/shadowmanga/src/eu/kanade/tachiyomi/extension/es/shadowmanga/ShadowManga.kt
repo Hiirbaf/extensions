@@ -15,6 +15,15 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+private val genres = listOf(
+    "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
+    "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
+    "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
+    "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
+    "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
+    "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
+)
+
 class ShadowManga :
     HttpSource(),
     ConfigurableSource {
@@ -27,7 +36,6 @@ class ShadowManga :
 
     override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {}
 
-    // ----------------- SEARCH URL -----------------
     private fun buildSearchUrl(query: String, filters: FilterList): String {
         val selectedGenres = (filters.find { it is GenreFilter } as? GenreFilter)
             ?.state
@@ -160,7 +168,7 @@ class ShadowManga :
 private class GenreFilter :
     Filter.Group<Filter.CheckBox>(
         "Géneros",
-        ShadowManga.genres.map { Filter.CheckBox(it, false) },
+        genres.map { Filter.CheckBox(it, false) },
     )
 
 private class StatusFilter :
@@ -170,13 +178,3 @@ private class StatusFilter :
     )
 
 private class AdultFilter : Filter.TriState("Mostrar contenido adulto")
-
-// ----------------- GENRES LIST -----------------
-private val ShadowManga.Companion.genres = listOf(
-    "Acción", "Aventura", "Artes marciales", "Boys Love", "Ciencia Ficción",
-    "Comedia", "Drama", "Ecchi", "Fantasía", "Gore", "Harem", "Horror",
-    "Misterio", "Psicológico", "Recuentos de la vida", "Romance",
-    "Seinen", "Shoujo", "Shoujo-ai", "Shounen", "Shounen Ai", "Superpoderes",
-    "Suspense", "Thriller", "Vida escolar", "Yaoi", "Yuri", "Isekai",
-    "Magia", "Sobrenatural", "Webtoon", "Webcomic", "Novela", "Manhwa", "Manhua",
-)
