@@ -84,7 +84,8 @@ class ShadowManga :
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
         val body = response.body!!.string()
-        val jsonArray = JSONObject(body).getJSONArray("data")
+        val jsonArray = org.json.JSONArray(body) // <-- así directamente
+
         val mangasMap = linkedMapOf<String, SManga>()
 
         for (i in 0 until jsonArray.length()) {
