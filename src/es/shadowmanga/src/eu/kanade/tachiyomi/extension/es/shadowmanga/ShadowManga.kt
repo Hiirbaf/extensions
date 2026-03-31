@@ -36,9 +36,7 @@ class ShadowManga :
         return GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
     }
 
-    override fun latestUpdatesRequest(page: Int): Request {
-        return GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
-    }
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/api/series-locales/search-candidates?take=120", headers)
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = buildSearchUrl(query, filters)
@@ -46,17 +44,11 @@ class ShadowManga :
     }
 
     // ----------------- PARSERS -----------------
-    override fun popularMangaParse(response: okhttp3.Response): MangasPage {
-        return parseMangasResponse(response)
-    }
+    override fun popularMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
-    override fun latestUpdatesParse(response: okhttp3.Response): MangasPage {
-        return parseMangasResponse(response)
-    }
+    override fun latestUpdatesParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
-    override fun searchMangaParse(response: okhttp3.Response): MangasPage {
-        return parseMangasResponse(response)
-    }
+    override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
     private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
         val body = response.body!!.string()
@@ -118,9 +110,7 @@ class ShadowManga :
     }
 
     // ----------------- PÁGINAS -----------------
-    override fun pageListRequest(chapter: SChapter): Request {
-        return GET("$baseUrl${chapter.url}", headers)
-    }
+    override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl${chapter.url}", headers)
 
     override fun pageListParse(response: okhttp3.Response): List<Page> {
         val json = JSONObject(response.body!!.string())
@@ -149,7 +139,7 @@ class ShadowManga :
 
     class GenreFilter : Filter.Group<Filter.CheckBox>(
         "Géneros",
-        genres.map { Filter.CheckBox(it, false) }
+        genres.map { Filter.CheckBox(it, false) },
     )
 
     class StatusFilter : Filter.Select<String>(
