@@ -1,8 +1,10 @@
 package eu.kanade.tachiyomi.extension.es.shadowmanga
 
-import eu.kanade.tachiyomi.source.model.*
-import eu.kanade.tachiyomi.source.online.*
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.Cover
+import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
