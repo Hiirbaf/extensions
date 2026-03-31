@@ -146,7 +146,7 @@ class ShadowManga :
     class StatusFilter :
         Filter.Select<String>(
             "Estado",
-            arrayOf("Todos", "En curso", "Completado")
+            arrayOf("Todos", "En curso", "Completado"),
         )
 
     class AdultFilter : Filter.TriState("Mostrar contenido adulto")
