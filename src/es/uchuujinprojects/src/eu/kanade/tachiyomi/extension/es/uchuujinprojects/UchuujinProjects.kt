@@ -1,8 +1,12 @@
 package eu.kanade.tachiyomi.extension.es.uchuujinprojects
 
 import eu.kanade.tachiyomi.multisrc.mangathemesia.MangaThemesia
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.interceptor.rateLimitHost
+import eu.kanade.tachiyomi.source.model.Filter
+import eu.kanade.tachiyomi.source.model.FilterList
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Request
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -19,9 +23,10 @@ class UchuujinProjects :
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         // Verificar si hay filtros aplicados
-        val hasFilters = filters.any {
-            when (it) {
-                is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter, is GenreListFilter, is ProjectFilter -> true
+        val hasFilters = filters.any { filter ->
+            when (filter) {
+                is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter,
+                is GenreListFilter, is ProjectFilter -> true
                 else -> false
             }
         }
