@@ -123,7 +123,7 @@ class Yupmanga : HttpSource() {
     private fun parseChapterList(document: Document): List<SChapter> = document.select("div.comic-card.group > a.chapter-link").map { element ->
         SChapter.create().apply {
             name = element.selectFirst("h3")!!.text()
-            //setUrlWithoutDomain("/reader?chapter=${element.attr("data-chapter")}")
+            // setUrlWithoutDomain("/reader?chapter=${element.attr("data-chapter")}")
             setUrlWithoutDomain("/reader_v2.php?chapter=${element.attr("data-chapter")}")
         }
     }
