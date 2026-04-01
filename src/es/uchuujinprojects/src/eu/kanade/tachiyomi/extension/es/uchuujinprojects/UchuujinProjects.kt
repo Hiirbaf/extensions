@@ -25,8 +25,13 @@ class UchuujinProjects :
         // Verificar si hay filtros aplicados
         val hasFilters = filters.any { filter ->
             when (filter) {
-                is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter,
-                is GenreListFilter, is ProjectFilter,
+                is AuthorFilter -> filter.state.isNotBlank()
+                is YearFilter -> filter.state.isNotBlank()
+                is StatusFilter -> filter.selectedValue().isNotBlank()
+                is TypeFilter -> filter.selectedValue().isNotBlank()
+                is OrderByFilter -> filter.selectedValue().isNotBlank()
+                is GenreListFilter -> filter.state.any { it.state != Filter.TriState.STATE_IGNORE }
+                is ProjectFilter -> filter.selectedValue() == "project-filter-on"
                 else -> false
             }
         }
