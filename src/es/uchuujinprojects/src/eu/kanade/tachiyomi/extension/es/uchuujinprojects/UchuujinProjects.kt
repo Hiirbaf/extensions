@@ -26,7 +26,8 @@ class UchuujinProjects :
         val hasFilters = filters.any { filter ->
             when (filter) {
                 is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter,
-                is GenreListFilter, is ProjectFilter -> true
+                is GenreListFilter, is ProjectFilter,
+                -> true
                 else -> false
             }
         }
