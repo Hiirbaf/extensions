@@ -123,44 +123,42 @@ class Yupmanga : HttpSource() {
     private fun parseChapterList(document: Document): List<SChapter> = document.select("div.comic-card.group > a.chapter-link").map { element ->
         SChapter.create().apply {
             name = element.selectFirst("h3")!!.text()
-            setUrlWithoutDomain("/reader?chapter=${element.attr("data-chapter")}")
+            //setUrlWithoutDomain("/reader?chapter=${element.attr("data-chapter")}")
+            setUrlWithoutDomain("/reader_v2.php?chapter=${element.attr("data-chapter")}")
         }
     }
 
     private val totalPagesRegex = """totalPages: (\d*)""".toRegex()
 
-    override fun pageListRequest(chapter: SChapter): Request {
-        // Request al reader_v2.php para obtener el token dinámico
-        val chapterId = chapter.url.substringAfter("chapter=")
-        val url = "$baseUrl/reader_v2.php?chapter=$chapterId"
-        return GET(url, headers)
-    }
-
     override fun pageListParse(response: Response): List<Page> {
-        val document = response.asJsoup()
+        val chapterId = response.request.url.queryParameter("chapter")
+            ?: throw Exception("Faltante ID de capítulo")
 
-        // 1️⃣ Extraer script que contiene la información del capítulo
-        val scriptText = document.selectFirst("script:containsData(chapterData)")?.html()
-            ?: throw Exception("No se pudo obtener token del capítulo ${response.request.url}")
+        // GET al reader_v2.php con el chapterId
+        val url = "$baseUrl/reader_v2.php?chapter=$chapterId"
+        val htmlResponse = client.newCall(GET(url, headers)).execute()
+        val document = htmlResponse.asJsoup()
 
-        // 2️⃣ Extraer el token
-        val tokenRegex = """"token"\s*:\s*"([A-Za-z0-9_\-]+)"""".toRegex()
-        val token = tokenRegex.find(scriptText)?.groups?.get(1)?.value
-            ?: throw Exception("No se pudo obtener token del capítulo ${response.request.url}")
+        // Buscar el <script> que contiene readerImageToken y totalPages
+        val scriptData = document.select("script:containsData(readerImageToken)").joinToString("\n")
 
-        // 3️⃣ Extraer cantidad de páginas
-        val pagesRegex = """"pages"\s*:\s*(\d+)""".toRegex()
-        val pageCount = pagesRegex.find(scriptText)?.groups?.get(1)?.value?.toInt()
-            ?: throw Exception("No se pudo obtener número de páginas del capítulo ${response.request.url}")
+        val token = Regex("""readerImageToken\s*=\s*["']([\w-]+)["']""")
+            .find(scriptData)?.groupValues?.get(1)
+            ?: throw Exception("No se pudo obtener token del capítulo $chapterId")
 
-        val chapterId = response.request.url.queryParameter("chapter")!!
+        val totalPages = Regex("""totalPages\s*:\s*(\d+)""")
+            .find(scriptData)?.groupValues?.get(1)?.toInt()
+            ?: throw Exception("No se pudo obtener cantidad de páginas del capítulo $chapterId")
 
-        // 4️⃣ Generar lista de páginas con token
-        return (1..pageCount).map { pageNum ->
-            Page(
-                index = pageNum,
-                url = "$baseUrl/image-proxy-v2.php?chapter=$chapterId&page=$pageNum&token=$token",
-            )
+        // Generar la lista de páginas con el token
+        return (1..totalPages).map { pageNumber ->
+            val imageUrl = "$baseUrl/image-proxy-v2.php".toHttpUrl().newBuilder()
+                .addQueryParameter("chapter", chapterId)
+                .addQueryParameter("page", pageNumber.toString())
+                .addQueryParameter("token", token)
+                .addQueryParameter("context", "reader")
+                .build()
+            Page(pageNumber, imageUrl = imageUrl.toString())
         }
     }
 
