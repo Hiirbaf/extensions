@@ -17,15 +17,13 @@ import okhttp3.Response
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.json.JSONObject
 
 class Yupmanga : HttpSource() {
 
     override val name = "Yupmanga"
-
     override val baseUrl = "https://www.yupmanga.com"
-
     override val lang = "es"
-
     override val supportsLatest = true
 
     override val client = network.cloudflareClient.newBuilder()
@@ -36,30 +34,23 @@ class Yupmanga : HttpSource() {
         .add("Referer", "$baseUrl/")
 
     override fun popularMangaRequest(page: Int) = GET("$baseUrl/top", headers)
-
     override fun popularMangaParse(response: Response) = parseSeriesList(response.asJsoup())
-
     override fun latestUpdatesRequest(page: Int) = GET("$baseUrl/?page=$page", headers)
-
     override fun latestUpdatesParse(response: Response) = parseSeriesList(response.asJsoup())
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        if (query.length < 3) {
-            throw Exception("El término de búsqueda debe tener al menos 3 caracteres.")
-        }
+        if (query.length < 3) throw Exception("El término de búsqueda debe tener al menos 3 caracteres.")
         val url = "$baseUrl/search.php".toHttpUrl().newBuilder()
             .addQueryParameter("q", query)
             .addQueryParameter("page", page.toString())
-
         return GET(url.build(), headers)
     }
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val document = response.asJsoup()
-        document.selectFirst("main > div.container > div[class^=bg-red]:has(p)")?.let {
+        response.asJsoup().selectFirst("main > div.container > div[class^=bg-red]:has(p)")?.let {
             throw Exception("Límite de solicitudes alcanzado. Intente de nuevo en unos minutos.")
         }
-        return parseSeriesList(document)
+        return parseSeriesList(response.asJsoup())
     }
 
     private fun parseSeriesList(document: Document): MangasPage {
@@ -84,10 +75,8 @@ class Yupmanga : HttpSource() {
                 title = selectFirst("h1")!!.text()
                 description = selectFirst("p#synopsisText")?.text()
                 author = selectFirst("i[title=Editorial] + span")?.text()
-                status = selectFirst("span:has(i[title=Estado])").parseStatus()
-                genre = select("a.genre-tag").joinToString { genre ->
-                    genre.text().replaceFirstChar { it.uppercase() }
-                }
+                status = select("span:has(i[title=Estado])").firstOrNull().parseStatus()
+                genre = select("a.genre-tag").joinToString { it.text().replaceFirstChar { c -> c.uppercase() } }
                 thumbnail_url = document.selectFirst("meta[property=og:image]")!!.attr("content")
             }
         }
@@ -106,7 +95,6 @@ class Yupmanga : HttpSource() {
             .addQueryParameter("series_id", mangaId)
             .addQueryParameter("page", page.toString())
             .addQueryParameter("order", "newest_first")
-
         return GET(url.build(), headers)
     }
 
@@ -116,23 +104,26 @@ class Yupmanga : HttpSource() {
         val allChapters = mutableListOf<SChapter>()
         val mangaId = response.request.url.queryParameter("series_id")!!
 
-        lateinit var chapterListDto: ChapterListDto
-
         var page = 1
+        var chapterListDto: ChapterListDto
+
         do {
             chapterListDto = if (page == 1) {
                 response.parseAs()
             } else {
-                client.newCall(
-                    paginatedChapterListRequest(mangaId, page),
-                ).execute().parseAs()
+                client.newCall(paginatedChapterListRequest(mangaId, page)).execute().parseAs()
             }
-
             val doc = Jsoup.parseBodyFragment(chapterListDto.html, baseUrl)
             allChapters.addAll(parseChapterList(doc))
-
             page++
         } while (chapterListDto.hasNextPage())
+
+        // Obtener token dinámico para cada capítulo
+        allChapters.forEach { chapter ->
+            val chapterId = chapter.url.substringAfter("chapter=")
+            val token = fetchToken(chapterId)
+            chapter.url = "$baseUrl/reader_v2.php?chapter=$chapterId&token=$token"
+        }
 
         return allChapters
     }
@@ -144,17 +135,22 @@ class Yupmanga : HttpSource() {
         }
     }
 
+    private fun fetchToken(chapterId: String): String {
+        val request = GET("$baseUrl/ajax/get_reader_token.php?chapter=$chapterId", headers)
+        val resp = client.newCall(request).execute()
+        val json = JSONObject(resp.body!!.string())
+        if (json.optBoolean("success")) return json.getString("token")
+        throw Exception("No se pudo obtener token para el capítulo $chapterId")
+    }
+
     private val totalPagesRegex = """totalPages: (\d*)""".toRegex()
 
     override fun pageListParse(response: Response): List<Page> {
-        val chapterId = response.request.url.queryParameter("chapter")
-        val token = response.request.url.queryParameter("token")
-        if (token.isNullOrEmpty() || chapterId.isNullOrEmpty()) {
-            throw Exception("Información desactualizada. Refresque la lista de capítulos.")
-        }
+        val chapterId = response.request.url.queryParameter("chapter") ?: throw Exception("Faltante ID de capítulo")
+        val token = response.request.url.queryParameter("token") ?: throw Exception("Faltante token")
         val document = response.asJsoup()
         val script = document.select("script:containsData(totalPages)").joinToString("\n")
-        val totalPages = totalPagesRegex.find(script)?.groupValues?.get(1)?.toInt()!!
+        val totalPages = totalPagesRegex.find(script)?.groupValues?.get(1)?.toInt() ?: 0
         return (1..totalPages).map { pageNumber ->
             val imageUrl = "$baseUrl/image-proxy-v2.php".toHttpUrl().newBuilder()
                 .addQueryParameter("chapter", chapterId)
@@ -162,7 +158,6 @@ class Yupmanga : HttpSource() {
                 .addQueryParameter("context", "reader")
                 .addQueryParameter("token", token)
                 .build()
-
             Page(pageNumber, imageUrl = imageUrl.toString())
         }
     }
