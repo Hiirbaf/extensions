@@ -19,7 +19,7 @@ class UchuujinProjects :
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         // Verificar si hay filtros aplicados
-        val hasFilters = filters.any { 
+        val hasFilters = filters.any {
             when (it) {
                 is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter, is GenreListFilter, is ProjectFilter -> true
                 else -> false
@@ -52,12 +52,13 @@ class UchuujinProjects :
                     is StatusFilter -> url.addQueryParameter("status", filter.selectedValue())
                     is TypeFilter -> url.addQueryParameter("type", filter.selectedValue())
                     is OrderByFilter -> url.addQueryParameter("order", filter.selectedValue())
-                    is GenreListFilter -> filter.state
-                        .filter { it.state != Filter.TriState.STATE_IGNORE }
-                        .forEach {
-                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) "-${it.value}" else it.value
-                            url.addQueryParameter("genre[]", value)
-                        }
+                    is GenreListFilter ->
+                        filter.state
+                            .filter { it.state != Filter.TriState.STATE_IGNORE }
+                            .forEach {
+                                val value = if (it.state == Filter.TriState.STATE_EXCLUDE) "-${it.value}" else it.value
+                                url.addQueryParameter("genre[]", value)
+                            }
                     is ProjectFilter -> if (filter.selectedValue() == "project-filter-on") {
                         url.setPathSegment(0, projectPageString.substring(1))
                     }
