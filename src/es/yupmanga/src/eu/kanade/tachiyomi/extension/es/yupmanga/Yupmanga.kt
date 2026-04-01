@@ -14,7 +14,6 @@ import kotlinx.serialization.Serializable
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
-import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -118,13 +117,6 @@ class Yupmanga : HttpSource() {
             page++
         } while (chapterListDto.hasNextPage())
 
-        // Obtener token dinámico para cada capítulo
-        allChapters.forEach { chapter ->
-            val chapterId = chapter.url.substringAfter("chapter=")
-            val token = fetchToken(chapterId)
-            chapter.url = "$baseUrl/reader_v2.php?chapter=$chapterId&token=$token"
-        }
-
         return allChapters
     }
 
@@ -135,22 +127,19 @@ class Yupmanga : HttpSource() {
         }
     }
 
-    private fun fetchToken(chapterId: String): String {
-        val request = GET("$baseUrl/ajax/get_reader_token.php?chapter=$chapterId", headers)
-        val resp = client.newCall(request).execute()
-        val json = JSONObject(resp.body!!.string())
-        if (json.optBoolean("success")) return json.getString("token")
-        throw Exception("No se pudo obtener token para el capítulo $chapterId")
-    }
-
     private val totalPagesRegex = """totalPages: (\d*)""".toRegex()
 
     override fun pageListParse(response: Response): List<Page> {
-        val chapterId = response.request.url.queryParameter("chapter") ?: throw Exception("Faltante ID de capítulo")
-        val token = response.request.url.queryParameter("token") ?: throw Exception("Faltante token")
         val document = response.asJsoup()
-        val script = document.select("script:containsData(totalPages)").joinToString("\n")
-        val totalPages = totalPagesRegex.find(script)?.groupValues?.get(1)?.toInt() ?: 0
+        val scriptData = document.select("script:containsData(token)").joinToString("\n")
+        val chapterId = response.request.url.queryParameter("chapter")
+            ?: throw Exception("Faltante ID de capítulo")
+        val token = Regex("""token\s*=\s*"(\w+)"""").find(scriptData)?.groupValues?.get(1)
+            ?: throw Exception("No se pudo obtener token del capítulo $chapterId")
+
+        val totalPages = totalPagesRegex.find(scriptData)?.groupValues?.get(1)?.toInt()
+            ?: throw Exception("No se pudo obtener cantidad de páginas")
+
         return (1..totalPages).map { pageNumber ->
             val imageUrl = "$baseUrl/image-proxy-v2.php".toHttpUrl().newBuilder()
                 .addQueryParameter("chapter", chapterId)
