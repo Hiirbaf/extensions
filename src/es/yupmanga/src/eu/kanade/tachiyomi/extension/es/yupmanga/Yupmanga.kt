@@ -120,10 +120,10 @@ class Yupmanga : HttpSource() {
         return allChapters
     }
 
-    private fun parseChapterList(document: Document): List<SChapter> = document.select("div.comic-card").map { element ->
+    private fun parseChapterList(document: Document): List<SChapter> = document.select("div.comic-card.group > a.chapter-link").map { element ->
         SChapter.create().apply {
             name = element.selectFirst("h3")!!.text()
-            setUrlWithoutDomain(element.selectFirst("> a[href]")!!.attr("abs:href"))
+            setUrlWithoutDomain("/reader?chapter=${element.attr("data-chapter")}")
         }
     }
 
@@ -133,7 +133,7 @@ class Yupmanga : HttpSource() {
         val document = response.asJsoup()
         val scriptData = document.select("script:containsData(token)").joinToString("\n")
         val chapterId = response.request.url.queryParameter("chapter")
-            ?: throw Exception("Faltante ID de capítulo")
+            ?: response.request.url.encodedPath.substringAfterLast("chapter=")
         val token = Regex("""token\s*=\s*"(\w+)"""").find(scriptData)?.groupValues?.get(1)
             ?: throw Exception("No se pudo obtener token del capítulo $chapterId")
 
