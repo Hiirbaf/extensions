@@ -68,6 +68,7 @@ class UchuujinProjects :
                     is ProjectFilter -> if (filter.selectedValue() == "project-filter-on") {
                         url.setPathSegment(0, projectPageString.substring(1))
                     }
+                    else -> {}
                 }
             }
             url.addPathSegment("") // asegurar que termine con '/'
