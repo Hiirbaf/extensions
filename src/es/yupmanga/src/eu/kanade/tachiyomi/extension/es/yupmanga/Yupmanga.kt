@@ -159,7 +159,7 @@ class Yupmanga : HttpSource() {
         return (1..pageCount).map { pageNum ->
             Page(
                 index = pageNum,
-                url = "$baseUrl/image-proxy-v2.php?chapter=$chapterId&page=$pageNum&token=$token"
+                url = "$baseUrl/image-proxy-v2.php?chapter=$chapterId&page=$pageNum&token=$token",
             )
         }
     }
