@@ -17,5 +17,56 @@ class UchuujinProjects :
         .rateLimitHost(baseUrl.toHttpUrl(), 3, 1)
         .build()
 
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        // Verificar si hay filtros aplicados
+        val hasFilters = filters.any { 
+            when (it) {
+                is AuthorFilter, is YearFilter, is StatusFilter, is TypeFilter, is OrderByFilter, is GenreListFilter, is ProjectFilter -> true
+                else -> false
+            }
+        }
+
+        return if (!hasFilters) {
+            // --- BUSCADOR GLOBAL (lupa) ---
+            val urlBuilder = baseUrl.toHttpUrl().newBuilder()
+
+            // Paginación: /page/<número>/ solo si page > 1
+            if (page > 1) {
+                urlBuilder.addPathSegment("page")
+                urlBuilder.addPathSegment(page.toString())
+            }
+
+            urlBuilder.addQueryParameter("s", query)
+            GET(urlBuilder.build(), headers)
+        } else {
+            // --- DIRECTORIO /manga/ CON FILTROS ---
+            val url = baseUrl.toHttpUrl().newBuilder()
+                .addPathSegment(mangaUrlDirectory.substring(1))
+                .addQueryParameter("title", query)
+                .addQueryParameter("page", page.toString())
+
+            filters.forEach { filter ->
+                when (filter) {
+                    is AuthorFilter -> url.addQueryParameter("author", filter.state)
+                    is YearFilter -> url.addQueryParameter("yearx", filter.state)
+                    is StatusFilter -> url.addQueryParameter("status", filter.selectedValue())
+                    is TypeFilter -> url.addQueryParameter("type", filter.selectedValue())
+                    is OrderByFilter -> url.addQueryParameter("order", filter.selectedValue())
+                    is GenreListFilter -> filter.state
+                        .filter { it.state != Filter.TriState.STATE_IGNORE }
+                        .forEach {
+                            val value = if (it.state == Filter.TriState.STATE_EXCLUDE) "-${it.value}" else it.value
+                            url.addQueryParameter("genre[]", value)
+                        }
+                    is ProjectFilter -> if (filter.selectedValue() == "project-filter-on") {
+                        url.setPathSegment(0, projectPageString.substring(1))
+                    }
+                }
+            }
+            url.addPathSegment("") // asegurar que termine con '/'
+            GET(url.build(), headers)
+        }
+    }
+
     override val hasProjectPage = true
 }
