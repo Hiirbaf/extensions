@@ -91,12 +91,14 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Page list ------------------
     override fun pageListParse(response: Response): List<Page> {
         val pages = mutableListOf<Page>()
-        val pathParts = response.request.url.encodedPath.trim('/').split('/')
-        if (pathParts.size < 3) return pages // "enchiladaweb/mangaSlug/capSlug"
-        val pathParts = chapter.url.trim('/').split('/') 
-        // pathParts = ["ririsa", "cap1"]
-        val mangaSlug = pathParts[0]  // "ririsa"
-        val capSlug = pathParts[1]    // "cap1"
+
+        // URL relativa del capítulo
+        val chapterPath = response.request.url.encodedPath // /enchiladaweb/ririsa/cap1/
+        val pathParts = chapterPath.replace(Regex("^/enchiladaweb/"), "").trim('/').split('/')
+        if (pathParts.size < 2) return pages
+
+        val mangaSlug = pathParts[0]
+        val capSlug = pathParts[1]
         val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
 
         try {
