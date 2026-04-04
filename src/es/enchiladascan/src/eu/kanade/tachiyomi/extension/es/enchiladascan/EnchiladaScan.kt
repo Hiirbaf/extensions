@@ -7,13 +7,16 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import okhttp3.OkHttpClient
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
 import okhttp3.Response
-import org.json.JSONArray
-import org.json.JSONObject
 import org.jsoup.Jsoup
-import java.io.IOException
+import uy.kohesive.injekt.injectLazy
 
 class EnchiladaScan : HttpSource() {
 
@@ -21,130 +24,140 @@ class EnchiladaScan : HttpSource() {
     override val baseUrl: String = "https://enchiladascan.github.io/enchiladaweb"
     override val lang: String = "es"
     override val supportsLatest: Boolean = false
-    override val client: OkHttpClient = OkHttpClient()
 
-    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
+    // FIX #3: Usa kotlinx.serialization en vez de org.json
+    private val json: Json by injectLazy()
 
-    override fun latestUpdatesParse(response: Response): MangasPage = MangasPage(emptyList(), false)
+    // FIX #1: Variable de instancia para guardar el query de búsqueda
+    private var searchQuery = ""
 
-    private val cachedThumbnails = mutableMapOf<String, String>()
+    // FIX #5: No se sobreescribe client; se usa el heredado de HttpSource
 
     // ------------------ Popular ------------------
+
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
 
     override fun popularMangaParse(response: Response): MangasPage {
-        val mangas = mutableListOf<SManga>()
-        val json = response.body?.string() ?: throw IOException("No se pudo descargar catalogo.json")
-        val data = JSONArray(JSONObject(json).optJSONArray("items").toString())
-
-        for (i in 0 until data.length()) {
-            val m = data.getJSONObject(i)
-            val manga = SManga.create()
-            manga.title = m.optString("title")
-            manga.url = m.optString("post_url")
-            // Aquí tomamos la portada del catálogo si existe
-            val thumb = m.optString("portada")?.let { baseUrl + it }
-            manga.thumbnail_url = thumb
-            // Guardamos en cache para mangaDetailsParse
-            if (thumb != null) cachedThumbnails[manga.url] = thumb
-
-            manga.description = "" // Sinopsis se obtiene desde HTML
-            mangas.add(manga)
+        val catalogo = json.decodeFromString<Catalogo>(response.body!!.string())
+        val mangas = catalogo.items.map { item ->
+            SManga.create().apply {
+                title = item.title
+                url = item.postUrl
+                // FIX #2: Portada extraída directamente del catálogo, sin cache
+                thumbnail_url = if (item.portada.isNotBlank()) baseUrl + item.portada else null
+            }
         }
         return MangasPage(mangas, false)
     }
 
     // ------------------ Search ------------------
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = GET("$baseUrl/catalogo.json", headers)
+
+    // FIX #1: El query se guarda en searchQuery para usarlo en searchMangaParse
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        searchQuery = query
+        return GET("$baseUrl/catalogo.json", headers)
+    }
 
     override fun searchMangaParse(response: Response): MangasPage {
         val allMangas = popularMangaParse(response).mangas
-        val query = response.request.url.queryParameter("query") ?: ""
-        val filtered = allMangas.filter { it.title.contains(query, ignoreCase = true) }
+        val filtered = if (searchQuery.isBlank()) allMangas
+                       else allMangas.filter { it.title.contains(searchQuery, ignoreCase = true) }
         return MangasPage(filtered, false)
     }
 
     // ------------------ Manga details ------------------
+
     override fun mangaDetailsParse(response: Response): SManga {
-        val doc = Jsoup.parse(response.body?.string() ?: "")
-        val urlPath = response.request.url.encodedPath.removePrefix("/").removeSuffix("/")
-        val manga = SManga.create()
-        manga.url = urlPath
+        val doc = Jsoup.parse(response.body!!.string())
+        val urlPath = response.request.url.encodedPath
+            .removePrefix("/enchiladaweb")
+            .removePrefix("/")
+            .removeSuffix("/")
 
-        // Tomamos portada del cache si existe
-        manga.thumbnail_url = cachedThumbnails[manga.url] ?: manga.thumbnail_url
+        return SManga.create().apply {
+            url = urlPath
 
-        // Solo actualizamos los campos que cambian
-        manga.title = doc.selectFirst("h1.manga-title")?.text() ?: manga.title
+            // FIX #2: Portada extraída del HTML, sin cache
+            thumbnail_url = doc.selectFirst("img.manga-cover")?.attr("abs:src")
 
-        val metaList = doc.select("ul.manga-meta-list li")
-        manga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: ""
-        manga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: ""
-        manga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: ""
+            title = doc.selectFirst("h1.manga-title")?.text() ?: ""
 
-        val statusText = metaList.find { it.text().startsWith("Estado:") }?.ownText() ?: ""
-        manga.status = when {
-            statusText.contains("En publicación", ignoreCase = true) -> SManga.ONGOING
-            statusText.contains("Finalizado", ignoreCase = true) -> SManga.COMPLETED
-            else -> SManga.UNKNOWN
+            val metaList = doc.select("ul.manga-meta-list li")
+            author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: ""
+            artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: ""
+            genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: ""
+
+            val statusText = metaList.find { it.text().startsWith("Estado:") }?.ownText() ?: ""
+            status = when {
+                statusText.contains("En publicación", ignoreCase = true) -> SManga.ONGOING
+                statusText.contains("Finalizado", ignoreCase = true) -> SManga.COMPLETED
+                else -> SManga.UNKNOWN
+            }
+
+            description = doc.selectFirst("p.manga-sinopsis")?.text() ?: ""
         }
-
-        manga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: manga.description
-
-        return manga
     }
 
     // ------------------ Chapter list ------------------
+
     override fun chapterListParse(response: Response): List<SChapter> {
-        val chapters = mutableListOf<SChapter>()
-        val doc = Jsoup.parse(response.body?.string() ?: "")
+        val doc = Jsoup.parse(response.body!!.string())
         val elements = doc.select("#chaptersList li a") + doc.select("#extrasList li a")
 
-        elements.forEach {
-            val chapter = SChapter.create()
-            chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
-            val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
-            chapter.chapter_number = numText.toFloatOrNull() ?: 0F
-            val href = it.attr("href")
-            chapter.url = href.replace(Regex("^/enchiladaweb/"), "/")
-            chapters.add(chapter)
-        }
-        chapters.reverse()
-        return chapters
+        return elements.map { el ->
+            SChapter.create().apply {
+                name = el.selectFirst(".cap-title")?.text() ?: el.text()
+                val numText = el.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
+                chapter_number = numText.toFloatOrNull() ?: 0F
+                url = el.attr("href").replace(Regex("^/enchiladaweb/"), "/")
+            }
+        }.reversed()
     }
 
     // ------------------ Page list ------------------
-    override fun pageListParse(response: Response): List<Page> {
-        val pages = mutableListOf<Page>()
-        val chapterPath = response.request.url.encodedPath
-        val pathParts = chapterPath.replace(Regex("^/enchiladaweb/"), "").trim('/').split('/')
-        if (pathParts.size < 2) return pages
-        val mangaSlug = pathParts[0]
-        val capSlug = pathParts[1]
-        val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
 
-        try {
-            val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
-            val array = JSONArray(json)
-            for (i in 0 until array.length()) {
-                val url = normalizeGoogleDriveUrl(array.getString(i))
-                pages.add(Page(i, "", url))
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+    // FIX #4: Se usa pageListRequest para que HttpSource haga la llamada de red correctamente
+    override fun pageListRequest(chapter: SChapter): Request {
+        val parts = chapter.url.trim('/').split('/')
+        // Espera url del tipo: /manga-slug/cap-slug
+        val mangaSlug = parts.getOrNull(parts.size - 2) ?: error("URL de capítulo inválida: ${chapter.url}")
+        val capSlug = parts.lastOrNull() ?: error("URL de capítulo inválida: ${chapter.url}")
+        return GET("$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json", headers)
+    }
+
+    override fun pageListParse(response: Response): List<Page> {
+        val array = json.parseToJsonElement(response.body!!.string()).jsonArray
+        return array.mapIndexed { i, el ->
+            Page(i, "", normalizeGoogleDriveUrl(el.jsonPrimitive.content))
         }
-        return pages
     }
 
     override fun imageUrlParse(response: Response): String = ""
 
+    // ------------------ Helpers ------------------
+
     private fun normalizeGoogleDriveUrl(url: String): String {
-        var u = url
-        u = u.replace(
-            Regex("^https://drive\\.google\\.com/uc\\?export=(?:view|download)&id=([^&]+).*"),
-            "https://drive.usercontent.google.com/uc?id=$1&export=download",
-        )
-        u = u.replace(Regex("(drive\\.usercontent\\.google\\.com/uc\\?[^#]*?)export=view"), "$1export=download")
-        return u
+        return url
+            .replace(
+                Regex("^https://drive\\.google\\.com/uc\\?export=(?:view|download)&id=([^&]+).*"),
+                "https://drive.usercontent.google.com/uc?id=$1&export=download",
+            )
+            .replace(
+                Regex("(drive\\.usercontent\\.google\\.com/uc\\?[^#]*?)export=view"),
+                "$1export=download",
+            )
     }
+
+    // FIX #3: Data classes para kotlinx.serialization
+    @Serializable
+    data class Catalogo(
+        val items: List<CatalogoItem> = emptyList(),
+    )
+
+    @Serializable
+    data class CatalogoItem(
+        val title: String = "",
+        @SerialName("post_url") val postUrl: String = "",
+        val portada: String = "",
+    )
 }
