@@ -27,6 +27,8 @@ class EnchiladaScan : HttpSource() {
 
     override fun latestUpdatesParse(response: Response): MangasPage = MangasPage(emptyList(), false)
 
+    private val cachedThumbnails = mutableMapOf<String, String>()
+
     // ------------------ Popular ------------------
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
 
@@ -34,13 +36,19 @@ class EnchiladaScan : HttpSource() {
         val mangas = mutableListOf<SManga>()
         val json = response.body?.string() ?: throw IOException("No se pudo descargar catalogo.json")
         val data = JSONArray(JSONObject(json).optJSONArray("items").toString())
+
         for (i in 0 until data.length()) {
             val m = data.getJSONObject(i)
             val manga = SManga.create()
             manga.title = m.optString("title")
             manga.url = m.optString("post_url")
-            manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
-            manga.description = "" // la sinopsis la obtenemos desde mangaDetailsParse
+            // Aquí tomamos la portada del catálogo si existe
+            val thumb = m.optString("portada")?.let { baseUrl + it }
+            manga.thumbnail_url = thumb
+            // Guardamos en cache para mangaDetailsParse
+            if (thumb != null) cachedThumbnails[manga.url] = thumb
+
+            manga.description = "" // Sinopsis se obtiene desde HTML
             mangas.add(manga)
         }
         return MangasPage(mangas, false)
@@ -52,39 +60,38 @@ class EnchiladaScan : HttpSource() {
     override fun searchMangaParse(response: Response): MangasPage {
         val allMangas = popularMangaParse(response).mangas
         val query = response.request.url.queryParameter("query") ?: ""
-        val filtered = allMangas.filter {
-            it.title.contains(query, ignoreCase = true)
-        }
+        val filtered = allMangas.filter { it.title.contains(query, ignoreCase = true) }
         return MangasPage(filtered, false)
     }
 
     // ------------------ Manga details ------------------
     override fun mangaDetailsParse(response: Response): SManga {
         val doc = Jsoup.parse(response.body?.string() ?: "")
-        // Obtenemos el SManga original si existe
         val urlPath = response.request.url.encodedPath.removePrefix("/").removeSuffix("/")
-        val originalManga = SManga.create()
-        originalManga.url = urlPath
+        val manga = SManga.create()
+        manga.url = urlPath
 
-        // Solo actualizamos los campos necesarios
-        originalManga.title = doc.selectFirst("h1.manga-title")?.text() ?: originalManga.title
-        originalManga.thumbnail_url = doc.selectFirst("div.manga-cover img")?.attr("src")?.let { baseUrl + it }
+        // Tomamos portada del cache si existe
+        manga.thumbnail_url = cachedThumbnails[manga.url] ?: manga.thumbnail_url
+
+        // Solo actualizamos los campos que cambian
+        manga.title = doc.selectFirst("h1.manga-title")?.text() ?: manga.title
 
         val metaList = doc.select("ul.manga-meta-list li")
-        originalManga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: originalManga.author
-        originalManga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: originalManga.artist
-        originalManga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: originalManga.genre
+        manga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: ""
+        manga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: ""
+        manga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: ""
 
         val statusText = metaList.find { it.text().startsWith("Estado:") }?.ownText() ?: ""
-        originalManga.status = when {
+        manga.status = when {
             statusText.contains("En publicación", ignoreCase = true) -> SManga.ONGOING
             statusText.contains("Finalizado", ignoreCase = true) -> SManga.COMPLETED
             else -> SManga.UNKNOWN
         }
 
-        originalManga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: originalManga.description
+        manga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: manga.description
 
-        return originalManga
+        return manga
     }
 
     // ------------------ Chapter list ------------------
@@ -92,6 +99,7 @@ class EnchiladaScan : HttpSource() {
         val chapters = mutableListOf<SChapter>()
         val doc = Jsoup.parse(response.body?.string() ?: "")
         val elements = doc.select("#chaptersList li a") + doc.select("#extrasList li a")
+
         elements.forEach {
             val chapter = SChapter.create()
             chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
@@ -114,6 +122,7 @@ class EnchiladaScan : HttpSource() {
         val mangaSlug = pathParts[0]
         val capSlug = pathParts[1]
         val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
+
         try {
             val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
             val array = JSONArray(json)
