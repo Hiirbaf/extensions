@@ -24,9 +24,7 @@ class EnchiladaScan : HttpSource() {
     override val client: OkHttpClient = OkHttpClient()
 
     // ------------------ Popular ------------------
-    override fun popularMangaRequest(page: Int): Request {
-        return GET("$baseUrl/catalogo.json", headers)
-    }
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
 
     override fun popularMangaParse(response: Response): MangasPage {
         val mangas = mutableListOf<SManga>()
@@ -46,18 +44,12 @@ class EnchiladaScan : HttpSource() {
     }
 
     // ------------------ Latest ------------------
-    override fun latestUpdatesRequest(page: Int): Request {
-        return popularMangaRequest(page)
-    }
+    override fun latestUpdatesRequest(page: Int): Request = popularMangaRequest(page)
 
-    override fun latestUpdatesParse(response: Response): MangasPage {
-        return popularMangaParse(response)
-    }
+    override fun latestUpdatesParse(response: Response): MangasPage = popularMangaParse(response)
 
     // ------------------ Search ------------------
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
-        return GET("$baseUrl/catalogo.json", headers)
-    }
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = GET("$baseUrl/catalogo.json", headers)
 
     override fun searchMangaParse(response: Response): MangasPage {
         val allMangas = popularMangaParse(response).mangas
