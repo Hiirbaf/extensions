@@ -102,6 +102,10 @@ class EnchiladaScan : HttpSource() {
         return pages
     }
 
+    override fun imageUrlParse(response: Response): String {
+        // No se usa, ya que usamos pageListParse
+        throw NotImplementedError("imageUrlParse no se usa en esta extensión")
+    }
     // ------------------ Google Drive URL ------------------
     private fun normalizeGoogleDriveUrl(url: String): String {
         var u = url
