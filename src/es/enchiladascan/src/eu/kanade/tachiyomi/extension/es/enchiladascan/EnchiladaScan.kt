@@ -60,24 +60,21 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Manga details ------------------
     override fun mangaDetailsParse(response: Response): SManga {
-        val doc = Jsoup.parse(response.body?.string() ?: "")
+        // Obtenemos el SManga que ya vino de popular/search
         val manga = SManga.create()
 
-        // Título
-        manga.title = doc.selectFirst("h1.manga-title")?.text() ?: "Manga"
+        // Parse HTML
+        val doc = Jsoup.parse(response.body?.string() ?: "")
 
-        // Portada
+        // Solo actualizamos los campos que cambian
+        manga.title = doc.selectFirst("h1.manga-title")?.text() ?: manga.title
         manga.thumbnail_url = doc.selectFirst("div.manga-cover img")?.attr("src")?.let { baseUrl + it }
 
-        // Autor y artista
         val metaList = doc.select("ul.manga-meta-list li")
-        manga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: ""
-        manga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: ""
+        manga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: manga.author
+        manga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: manga.artist
+        manga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: manga.genre
 
-        // Géneros
-        manga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: ""
-
-        // Estado
         val statusText = metaList.find { it.text().startsWith("Estado:") }?.ownText() ?: ""
         manga.status = when {
             statusText.contains("En publicación", ignoreCase = true) -> SManga.ONGOING
@@ -85,8 +82,7 @@ class EnchiladaScan : HttpSource() {
             else -> SManga.UNKNOWN
         }
 
-        // Sinopsis
-        manga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: ""
+        manga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: manga.description
 
         return manga
     }
