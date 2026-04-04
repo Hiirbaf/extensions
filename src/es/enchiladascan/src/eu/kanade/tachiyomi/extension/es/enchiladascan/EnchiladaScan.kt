@@ -10,7 +10,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
@@ -60,8 +59,11 @@ class EnchiladaScan : HttpSource() {
 
     override fun searchMangaParse(response: Response): MangasPage {
         val allMangas = popularMangaParse(response).mangas
-        val filtered = if (searchQuery.isBlank()) allMangas
-                       else allMangas.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        val filtered = if (searchQuery.isBlank()) {
+            allMangas
+        } else {
+            allMangas.filter { it.title.contains(searchQuery, ignoreCase = true) }
+        }
         return MangasPage(filtered, false)
     }
 
@@ -136,17 +138,15 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Helpers ------------------
 
-    private fun normalizeGoogleDriveUrl(url: String): String {
-        return url
-            .replace(
-                Regex("^https://drive\\.google\\.com/uc\\?export=(?:view|download)&id=([^&]+).*"),
-                "https://drive.usercontent.google.com/uc?id=$1&export=download",
-            )
-            .replace(
-                Regex("(drive\\.usercontent\\.google\\.com/uc\\?[^#]*?)export=view"),
-                "$1export=download",
-            )
-    }
+    private fun normalizeGoogleDriveUrl(url: String): String = url
+        .replace(
+            Regex("^https://drive\\.google\\.com/uc\\?export=(?:view|download)&id=([^&]+).*"),
+            "https://drive.usercontent.google.com/uc?id=$1&export=download",
+        )
+        .replace(
+            Regex("(drive\\.usercontent\\.google\\.com/uc\\?[^#]*?)export=view"),
+            "$1export=download",
+        )
 
     // FIX #3: Data classes para kotlinx.serialization
     @Serializable
