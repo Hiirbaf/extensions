@@ -80,7 +80,7 @@ class EnchiladaScan : HttpSource() {
 
             // NORMALIZADO: mantiene "/" inicial y evita duplicar "enchiladaweb"
             val href = it.attr("href")
-            chapter.url = href.removePrefix(baseUrl)
+            chapter.url = href.replace(Regex("^/enchiladaweb/"), "/")
 
             chapters.add(chapter)
         }
@@ -93,8 +93,10 @@ class EnchiladaScan : HttpSource() {
         val pages = mutableListOf<Page>()
         val pathParts = response.request.url.encodedPath.trim('/').split('/')
         if (pathParts.size < 3) return pages // "enchiladaweb/mangaSlug/capSlug"
-        val mangaSlug = pathParts[1]
-        val capSlug = pathParts[2]
+        val pathParts = chapter.url.trim('/').split('/') 
+        // pathParts = ["ririsa", "cap1"]
+        val mangaSlug = pathParts[0]  // "ririsa"
+        val capSlug = pathParts[1]    // "cap1"
         val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
 
         try {
