@@ -1,6 +1,6 @@
 ext {
-    extName = 'AKAYA'
-    extClass = '.Akaya'
+    extName = 'EnchiladaScan'
+    extClass = '.EnchiladaScan'
     extVersionCode = 1
     isNsfw = true
 }
