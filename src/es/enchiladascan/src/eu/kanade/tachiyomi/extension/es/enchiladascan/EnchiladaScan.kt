@@ -20,8 +20,10 @@ class EnchiladaScan : HttpSource() {
     override val name: String = "EnchiladaScan"
     override val baseUrl: String = "https://enchiladascan.github.io/enchiladaweb"
     override val lang: String = "es"
-    override val supportsLatest: Boolean = true
+    override val supportsLatest: Boolean = false
     override val client: OkHttpClient = OkHttpClient()
+
+    private var cachedCatalog: JSONArray? = null
 
     // ------------------ Popular ------------------
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
@@ -30,22 +32,30 @@ class EnchiladaScan : HttpSource() {
         val mangas = mutableListOf<SManga>()
         val json = response.body?.string() ?: throw IOException("No se pudo descargar catalogo.json")
         val data = JSONObject(json)
-        val items = data.optJSONArray("items") ?: return MangasPage(emptyList(), false)
-        for (i in 0 until items.length()) {
-            val m = items.getJSONObject(i)
+        cachedCatalog = data.optJSONArray("items")
+        if (cachedCatalog == null) return MangasPage(emptyList(), false)
+
+        for (i in 0 until cachedCatalog!!.length()) {
+            val m = cachedCatalog!!.getJSONObject(i)
             val manga = SManga.create()
             manga.title = m.optString("title")
             manga.url = m.optString("post_url")
             manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
-            manga.description = "Sección: ${m.optString("seccion")}\nÚltimo: ${m.optString("latest")}\nTags: ${(m.optJSONArray("tags")?.join(", ") ?: "")}"
+            manga.description = buildString {
+                append("Autor: ${m.optString("autor")}\n")
+                append("Artista: ${m.optString("artista")}\n")
+                append("Géneros: ${(m.optJSONArray("generos")?.join(", ") ?: "")}\n")
+                append("Estado: ${m.optString("estado")}\n")
+                append("Año: ${m.optInt("anio")}\n")
+                append("Editorial: ${m.optString("editorial")}\n")
+                append("Sección: ${m.optString("seccion")}\n")
+                append("Último capítulo: ${m.optString("latest")}\n")
+                append("Sinopsis: ${m.optString("sinopsis")}")
+            }
             mangas.add(manga)
         }
         return MangasPage(mangas, false)
     }
-
-    // ------------------ Latest ------------------
-    override fun latestUpdatesRequest(page: Int): Request = popularMangaRequest(page)
-    override fun latestUpdatesParse(response: Response): MangasPage = popularMangaParse(response)
 
     // ------------------ Search ------------------
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = GET("$baseUrl/catalogo.json", headers)
@@ -54,13 +64,40 @@ class EnchiladaScan : HttpSource() {
         val allMangas = popularMangaParse(response).mangas
         val query = response.request.url.queryParameter("query") ?: ""
         val filtered = allMangas.filter {
-            it.title.contains(query, ignoreCase = true) || (it.description?.contains(query, ignoreCase = true) ?: false)
+            it.title.contains(query, ignoreCase = true) ||
+                (it.description?.contains(query, ignoreCase = true) ?: false)
         }
         return MangasPage(filtered, false)
     }
 
     // ------------------ Manga details ------------------
-    override fun mangaDetailsParse(response: Response): SManga = SManga.create()
+    override fun mangaDetailsParse(response: Response): SManga {
+        val pathParts = response.request.url.encodedPath.trim('/').split('/')
+        val mangaSlug = pathParts.lastOrNull() ?: return SManga.create()
+        cachedCatalog?.let { catalog ->
+            for (i in 0 until catalog.length()) {
+                val m = catalog.getJSONObject(i)
+                if (m.optString("post_url").contains(mangaSlug)) {
+                    val manga = SManga.create()
+                    manga.title = m.optString("title")
+                    manga.description = buildString {
+                        append("Autor: ${m.optString("autor")}\n")
+                        append("Artista: ${m.optString("artista")}\n")
+                        append("Géneros: ${(m.optJSONArray("generos")?.join(", ") ?: "")}\n")
+                        append("Estado: ${m.optString("estado")}\n")
+                        append("Año: ${m.optInt("anio")}\n")
+                        append("Editorial: ${m.optString("editorial")}\n")
+                        append("Sección: ${m.optString("seccion")}\n")
+                        append("Último capítulo: ${m.optString("latest")}\n")
+                        append("Sinopsis: ${m.optString("sinopsis")}")
+                    }
+                    manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
+                    return manga
+                }
+            }
+        }
+        return SManga.create()
+    }
 
     // ------------------ Chapter list ------------------
     override fun chapterListParse(response: Response): List<SChapter> {
@@ -72,11 +109,8 @@ class EnchiladaScan : HttpSource() {
             chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
             val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
             chapter.chapter_number = numText.toFloatOrNull() ?: 0F
-
-            // NORMALIZADO: mantiene "/" inicial y evita duplicar "enchiladaweb"
             val href = it.attr("href")
             chapter.url = href.replace(Regex("^/enchiladaweb/"), "/")
-
             chapters.add(chapter)
         }
         chapters.reverse()
@@ -86,16 +120,12 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Page list ------------------
     override fun pageListParse(response: Response): List<Page> {
         val pages = mutableListOf<Page>()
-
-        // URL relativa del capítulo
-        val chapterPath = response.request.url.encodedPath // /enchiladaweb/ririsa/cap1/
+        val chapterPath = response.request.url.encodedPath
         val pathParts = chapterPath.replace(Regex("^/enchiladaweb/"), "").trim('/').split('/')
         if (pathParts.size < 2) return pages
-
         val mangaSlug = pathParts[0]
         val capSlug = pathParts[1]
         val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
-
         try {
             val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
             val array = JSONArray(json)
@@ -109,10 +139,8 @@ class EnchiladaScan : HttpSource() {
         return pages
     }
 
-    // ------------------ imageUrlParse requerido ------------------
     override fun imageUrlParse(response: Response): String = ""
 
-    // ------------------ Función de normalización de Google Drive ------------------
     private fun normalizeGoogleDriveUrl(url: String): String {
         var u = url
         u = u.replace(
