@@ -35,7 +35,7 @@ class EnchiladaScan : HttpSource() {
             val m = items.getJSONObject(i)
             val manga = SManga.create()
             manga.title = m.optString("title")
-            manga.url = m.optString("post_url")
+            manga.url = m.optString("post_url").removePrefix("/")
             manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
             manga.description = "Sección: ${m.optString("seccion")}\nÚltimo: ${m.optString("latest")}\nTags: ${(m.optJSONArray("tags")?.join(", ") ?: "")}"
             mangas.add(manga)
@@ -45,7 +45,6 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Latest ------------------
     override fun latestUpdatesRequest(page: Int): Request = popularMangaRequest(page)
-
     override fun latestUpdatesParse(response: Response): MangasPage = popularMangaParse(response)
 
     // ------------------ Search ------------------
@@ -78,7 +77,9 @@ class EnchiladaScan : HttpSource() {
             chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
             val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
             chapter.chapter_number = numText.toFloatOrNull() ?: 0F
-            chapter.url = it.attr("href").removePrefix(baseUrl)
+
+            // normaliza URL para evitar duplicar "enchiladaweb"
+            chapter.url = it.attr("href").removePrefix("/").removePrefix("enchiladaweb/")
             chapters.add(chapter)
         }
         chapters.reverse()
@@ -102,12 +103,10 @@ class EnchiladaScan : HttpSource() {
         return pages
     }
 
-    override fun imageUrlParse(response: Response): String {
-        // No se usa, ya que usamos pageListParse
-        throw NotImplementedError("imageUrlParse no se usa en esta extensión")
-    }
+    // ------------------ imageUrlParse requerido ------------------
+    override fun imageUrlParse(response: Response): String = ""
 
-    // ------------------ Google Drive URL ------------------
+    // ------------------ Función de normalización de Google Drive ------------------
     private fun normalizeGoogleDriveUrl(url: String): String {
         var u = url
         u = u.replace(
