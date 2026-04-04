@@ -1,17 +1,17 @@
 package eu.kanade.tachiyomi.extension.es.enchiladascan
 
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.source.model.SManga
-import eu.kanade.tachiyomi.source.model.SChapter
-import eu.kanade.tachiyomi.source.model.Page
-import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.json.JSONArray
 import org.json.JSONObject
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.io.IOException
 
 class EnchiladaScan : HttpSource() {
@@ -79,7 +79,6 @@ class EnchiladaScan : HttpSource() {
             parseChapterElements(doc.select("#extrasList li a"))
 
             chapters.reverse() // del más antiguo al más reciente
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -103,7 +102,6 @@ class EnchiladaScan : HttpSource() {
                 val url = normalizeGoogleDriveUrl(array.getString(i))
                 pages.add(Page(i, "", url))
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -115,7 +113,7 @@ class EnchiladaScan : HttpSource() {
         var u = url
         u = u.replace(
             Regex("^https://drive\\.google\\.com/uc\\?export=(?:view|download)&id=([^&]+).*"),
-            "https://drive.usercontent.google.com/uc?id=$1&export=download"
+            "https://drive.usercontent.google.com/uc?id=$1&export=download",
         )
         u = u.replace(Regex("(drive\\.usercontent\\.google\\.com/uc\\?[^#]*?)export=view"), "$1export=download")
         return u
