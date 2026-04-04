@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONArray
+import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.io.IOException
 
@@ -21,6 +22,10 @@ class EnchiladaScan : HttpSource() {
     override val lang: String = "es"
     override val supportsLatest: Boolean = false
     override val client: OkHttpClient = OkHttpClient()
+
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
+
+    override fun latestUpdatesParse(response: Response): MangasPage = MangasPage(emptyList(), false)
 
     // ------------------ Popular ------------------
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
