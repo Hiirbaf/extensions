@@ -40,7 +40,7 @@ class EnchiladaScan : HttpSource() {
             manga.title = m.optString("title")
             manga.url = m.optString("post_url")
             manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
-            manga.description = "" // La sinopsis la obtenemos en mangaDetailsParse desde HTML
+            manga.description = "" // la sinopsis la obtenemos desde mangaDetailsParse
             mangas.add(manga)
         }
         return MangasPage(mangas, false)
@@ -60,31 +60,31 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Manga details ------------------
     override fun mangaDetailsParse(response: Response): SManga {
-        // Obtenemos el SManga que ya vino de popular/search
-        val manga = SManga.create()
-
-        // Parse HTML
         val doc = Jsoup.parse(response.body?.string() ?: "")
+        // Obtenemos el SManga original si existe
+        val urlPath = response.request.url.encodedPath.removePrefix("/").removeSuffix("/")
+        val originalManga = SManga.create()
+        originalManga.url = urlPath
 
-        // Solo actualizamos los campos que cambian
-        manga.title = doc.selectFirst("h1.manga-title")?.text() ?: manga.title
-        manga.thumbnail_url = doc.selectFirst("div.manga-cover img")?.attr("src")?.let { baseUrl + it }
+        // Solo actualizamos los campos necesarios
+        originalManga.title = doc.selectFirst("h1.manga-title")?.text() ?: originalManga.title
+        originalManga.thumbnail_url = doc.selectFirst("div.manga-cover img")?.attr("src")?.let { baseUrl + it }
 
         val metaList = doc.select("ul.manga-meta-list li")
-        manga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: manga.author
-        manga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: manga.artist
-        manga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: manga.genre
+        originalManga.author = metaList.find { it.text().startsWith("Autor:") }?.ownText() ?: originalManga.author
+        originalManga.artist = metaList.find { it.text().startsWith("Arte:") }?.ownText() ?: originalManga.artist
+        originalManga.genre = metaList.find { it.text().startsWith("Géneros:") }?.ownText() ?: originalManga.genre
 
         val statusText = metaList.find { it.text().startsWith("Estado:") }?.ownText() ?: ""
-        manga.status = when {
+        originalManga.status = when {
             statusText.contains("En publicación", ignoreCase = true) -> SManga.ONGOING
             statusText.contains("Finalizado", ignoreCase = true) -> SManga.COMPLETED
             else -> SManga.UNKNOWN
         }
 
-        manga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: manga.description
+        originalManga.description = doc.selectFirst("p.manga-sinopsis")?.text() ?: originalManga.description
 
-        return manga
+        return originalManga
     }
 
     // ------------------ Chapter list ------------------
@@ -97,11 +97,8 @@ class EnchiladaScan : HttpSource() {
             chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
             val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
             chapter.chapter_number = numText.toFloatOrNull() ?: 0F
-
-            // NORMALIZADO: mantiene "/" inicial y evita duplicar "enchiladaweb"
             val href = it.attr("href")
             chapter.url = href.replace(Regex("^/enchiladaweb/"), "/")
-
             chapters.add(chapter)
         }
         chapters.reverse()
@@ -111,15 +108,12 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Page list ------------------
     override fun pageListParse(response: Response): List<Page> {
         val pages = mutableListOf<Page>()
-
-        // URL relativa del capítulo
         val chapterPath = response.request.url.encodedPath
         val pathParts = chapterPath.replace(Regex("^/enchiladaweb/"), "").trim('/').split('/')
         if (pathParts.size < 2) return pages
         val mangaSlug = pathParts[0]
         val capSlug = pathParts[1]
         val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
-
         try {
             val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
             val array = JSONArray(json)
@@ -133,10 +127,8 @@ class EnchiladaScan : HttpSource() {
         return pages
     }
 
-    // ------------------ imageUrlParse requerido ------------------
     override fun imageUrlParse(response: Response): String = ""
 
-    // ------------------ Función de normalización de Google Drive ------------------
     private fun normalizeGoogleDriveUrl(url: String): String {
         var u = url
         u = u.replace(
