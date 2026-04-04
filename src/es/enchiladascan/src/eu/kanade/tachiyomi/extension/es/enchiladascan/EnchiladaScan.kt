@@ -25,6 +25,10 @@ class EnchiladaScan : HttpSource() {
 
     private var cachedCatalog: JSONArray? = null
 
+    override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
+
+    override fun latestUpdatesParse(response: Response): MangasPage = MangasPage(emptyList(), false)
+
     // ------------------ Popular ------------------
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
 
