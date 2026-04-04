@@ -32,6 +32,10 @@ class EnchiladaScan : HttpSource() {
 
     // FIX #5: No se sobreescribe client; se usa el heredado de HttpSource
 
+    override fun latestUpdatesRequest(page: Int): Request = popularMangaRequest(page)
+
+    override fun latestUpdatesParse(response: Response): MangasPage = MangasPage(emptyList(), false)
+
     // ------------------ Popular ------------------
 
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
