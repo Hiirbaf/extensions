@@ -61,6 +61,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Manga details ------------------
     override fun mangaDetailsParse(response: Response): SManga = SManga.create()
+
     // ------------------ Chapter list ------------------
     override fun chapterListParse(response: Response): List<SChapter> {
         val chapters = mutableListOf<SChapter>()
