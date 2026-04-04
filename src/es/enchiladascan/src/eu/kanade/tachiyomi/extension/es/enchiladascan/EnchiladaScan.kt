@@ -78,8 +78,10 @@ class EnchiladaScan : HttpSource() {
             val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
             chapter.chapter_number = numText.toFloatOrNull() ?: 0F
 
-            // normaliza URL para evitar duplicar "enchiladaweb"
-            chapter.url = it.attr("href").removePrefix("/").removePrefix("enchiladaweb/")
+            // NORMALIZADO: mantiene "/" inicial y evita duplicar "enchiladaweb"
+            val href = it.attr("href")
+            chapter.url = href.removePrefix(baseUrl)
+
             chapters.add(chapter)
         }
         chapters.reverse()
@@ -89,7 +91,12 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Page list ------------------
     override fun pageListParse(response: Response): List<Page> {
         val pages = mutableListOf<Page>()
-        val jsonUrl = response.request.url.toString()
+        val pathParts = response.request.url.encodedPath.trim('/').split('/')
+        if (pathParts.size < 3) return pages // "enchiladaweb/mangaSlug/capSlug"
+        val mangaSlug = pathParts[1]
+        val capSlug = pathParts[2]
+        val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
+
         try {
             val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
             val array = JSONArray(json)
