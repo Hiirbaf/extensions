@@ -8,29 +8,31 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import java.io.IOException
 
 class EnchiladaScan : HttpSource() {
 
-    override val name = "EnchiladaScan"
-    override val baseUrl = "https://enchiladascan.github.io/enchiladaweb"
-    override val lang = "es"
-    override val supportsLatest = true
+    override val name: String = "EnchiladaScan"
+    override val baseUrl: String = "https://enchiladascan.github.io/enchiladaweb"
+    override val lang: String = "es"
+    override val supportsLatest: Boolean = true
     override val client: OkHttpClient = OkHttpClient()
 
-    // ------------------ Listado de mangas ------------------
-    override fun fetchPopularManga(page: Int): MangasPage {
+    // ------------------ Popular ------------------
+    override fun popularMangaRequest(page: Int): Request {
+        return GET("$baseUrl/catalogo.json", headers)
+    }
+
+    override fun popularMangaParse(response: Response): MangasPage {
         val mangas = mutableListOf<SManga>()
-        val url = "$baseUrl/catalogo.json"
-        val json = client.newCall(GET(url)).execute().body?.string()
-            ?: throw IOException("No se pudo descargar catalogo.json")
+        val json = response.body?.string() ?: throw IOException("No se pudo descargar catalogo.json")
         val data = JSONObject(json)
         val items = data.optJSONArray("items") ?: return MangasPage(emptyList(), false)
-
         for (i in 0 until items.length()) {
             val m = items.getJSONObject(i)
             val manga = SManga.create()
@@ -40,64 +42,64 @@ class EnchiladaScan : HttpSource() {
             manga.description = "Sección: ${m.optString("seccion")}\nÚltimo: ${m.optString("latest")}\nTags: ${(m.optJSONArray("tags")?.join(", ") ?: "")}"
             mangas.add(manga)
         }
-
         return MangasPage(mangas, false)
     }
 
-    override fun fetchLatestUpdates(page: Int): MangasPage = fetchPopularManga(page)
+    // ------------------ Latest ------------------
+    override fun latestUpdatesRequest(page: Int): Request {
+        return popularMangaRequest(page)
+    }
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
-        val allMangas = fetchPopularManga(1).mangas
+    override fun latestUpdatesParse(response: Response): MangasPage {
+        return popularMangaParse(response)
+    }
+
+    // ------------------ Search ------------------
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        return GET("$baseUrl/catalogo.json", headers)
+    }
+
+    override fun searchMangaParse(response: Response): MangasPage {
+        val allMangas = popularMangaParse(response).mangas
+        val query = response.request.url.queryParameter("query") ?: ""
         val filtered = allMangas.filter {
             it.title.contains(query, ignoreCase = true) || (it.description?.contains(query, ignoreCase = true) ?: false)
         }
         return MangasPage(filtered, false)
     }
 
-    // ------------------ Capítulos ------------------
-    override fun fetchMangaDetails(manga: SManga): SManga = manga
+    // ------------------ Manga details ------------------
+    override fun mangaDetailsParse(response: Response): SManga {
+        val doc = Jsoup.parse(response.body?.string() ?: "")
+        val manga = SManga.create()
+        manga.title = doc.selectFirst(".reader-title")?.text() ?: "Manga"
+        return manga
+    }
 
-    override fun fetchChapterList(manga: SManga): List<SChapter> {
+    // ------------------ Chapter list ------------------
+    override fun chapterListParse(response: Response): List<SChapter> {
         val chapters = mutableListOf<SChapter>()
-        try {
-            val doc: Document = Jsoup.connect(baseUrl + manga.url).get()
-
-            fun parseChapterElements(elements: List<org.jsoup.nodes.Element>) {
-                for (el in elements) {
-                    val chapter = SChapter.create()
-                    chapter.name = el.selectFirst(".cap-title")?.text() ?: el.text()
-                    val numText = el.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
-                    chapter.chapter_number = numText.toFloatOrNull() ?: 0F
-                    chapter.url = el.attr("href").removePrefix(baseUrl)
-                    chapters.add(chapter)
-                }
-            }
-
-            // Capítulos principales
-            parseChapterElements(doc.select("#chaptersList li a"))
-            // Capítulos extras
-            parseChapterElements(doc.select("#extrasList li a"))
-
-            chapters.reverse() // del más antiguo al más reciente
-        } catch (e: Exception) {
-            e.printStackTrace()
+        val doc = Jsoup.parse(response.body?.string() ?: "")
+        val elements = doc.select("#chaptersList li a") + doc.select("#extrasList li a")
+        elements.forEach {
+            val chapter = SChapter.create()
+            chapter.name = it.selectFirst(".cap-title")?.text() ?: it.text()
+            val numText = it.selectFirst(".cap-number")?.text()?.replace("Cap. ", "") ?: "0"
+            chapter.chapter_number = numText.toFloatOrNull() ?: 0F
+            chapter.url = it.attr("href").removePrefix(baseUrl)
+            chapters.add(chapter)
         }
+        chapters.reverse()
         return chapters
     }
 
-    // ------------------ Páginas ------------------
-    override fun fetchPageList(chapter: SChapter): List<Page> {
+    // ------------------ Page list ------------------
+    override fun pageListParse(response: Response): List<Page> {
         val pages = mutableListOf<Page>()
+        val jsonUrl = response.request.url.toString()
         try {
-            val parts = chapter.url.trim('/').split('/')
-            if (parts.size < 2) return pages
-            val mangaSlug = parts[0]
-            val capSlug = parts[1]
-            val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
-
             val json = client.newCall(GET(jsonUrl)).execute().body?.string() ?: return pages
             val array = JSONArray(json)
-
             for (i in 0 until array.length()) {
                 val url = normalizeGoogleDriveUrl(array.getString(i))
                 pages.add(Page(i, "", url))
@@ -108,7 +110,7 @@ class EnchiladaScan : HttpSource() {
         return pages
     }
 
-    // ------------------ Función de normalización de Google Drive ------------------
+    // ------------------ Google Drive URL ------------------
     private fun normalizeGoogleDriveUrl(url: String): String {
         var u = url
         u = u.replace(
