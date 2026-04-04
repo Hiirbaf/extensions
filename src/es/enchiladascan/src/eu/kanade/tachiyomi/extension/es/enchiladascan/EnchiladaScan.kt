@@ -35,7 +35,7 @@ class EnchiladaScan : HttpSource() {
             val m = items.getJSONObject(i)
             val manga = SManga.create()
             manga.title = m.optString("title")
-            manga.url = m.optString("post_url").removePrefix("/")
+            manga.url = m.optString("post_url")
             manga.thumbnail_url = m.optString("portada")?.let { baseUrl + it }
             manga.description = "Sección: ${m.optString("seccion")}\nÚltimo: ${m.optString("latest")}\nTags: ${(m.optJSONArray("tags")?.join(", ") ?: "")}"
             mangas.add(manga)
