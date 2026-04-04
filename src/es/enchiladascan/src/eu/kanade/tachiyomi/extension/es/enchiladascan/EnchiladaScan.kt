@@ -61,12 +61,8 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Manga details ------------------
     override fun mangaDetailsParse(response: Response): SManga {
-        val doc = Jsoup.parse(response.body?.string() ?: "")
-        val manga = SManga.create()
-        manga.title = doc.selectFirst(".reader-title")?.text() ?: "Manga"
-        return manga
+        return SManga.create()
     }
-
     // ------------------ Chapter list ------------------
     override fun chapterListParse(response: Response): List<SChapter> {
         val chapters = mutableListOf<SChapter>()
