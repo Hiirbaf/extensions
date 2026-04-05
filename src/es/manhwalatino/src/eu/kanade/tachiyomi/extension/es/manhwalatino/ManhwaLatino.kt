@@ -62,7 +62,7 @@ class ManhwaLatino :
      */
     override val useNewChapterEndpoint = true
 
-    override val useLoadMoreRequest = LoadMoreStrategy.NEXT_PAGE
+    override val useLoadMoreRequest = LoadMoreStrategy.AutoDetect
 
     /**
      * Selectores específicos del sitio
