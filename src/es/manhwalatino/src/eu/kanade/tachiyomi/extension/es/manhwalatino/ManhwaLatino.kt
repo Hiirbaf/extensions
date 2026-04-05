@@ -24,7 +24,6 @@ class ManhwaLatino :
      * Cloudflare + Turnstile safe client
      */
     override val client: OkHttpClient = super.client.newBuilder()
-
         // IMPORTANTÍSIMO para evitar rate limiter
         .rateLimitHost(
             baseUrl.toHttpUrl(),
@@ -36,9 +35,7 @@ class ManhwaLatino :
 
             val request = chain.request()
             val response = chain.proceed(request)
-
             val bodyString = response.peekBody(1024 * 1024).string()
-
             // Detectar challenge Cloudflare
             if (
                 response.code == 503 ||
@@ -52,7 +49,7 @@ class ManhwaLatino :
 
                 throw Exception(
                     "Cloudflare bloqueó el acceso.\n\n" +
-                    "Abrí el manga en WebView y resolvé el CAPTCHA."
+                    "Abrí el manga en WebView y resolvé el CAPTCHA.",
                 )
             }
 
