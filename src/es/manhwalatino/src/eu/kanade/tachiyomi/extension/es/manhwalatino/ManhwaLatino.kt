@@ -123,11 +123,9 @@ class ManhwaLatino :
                     client.newCall(
                         GET(nextPageUrl, headers),
                     ).execute().asJsoup()
-
             } else {
                 break
             }
-
         } while (true)
 
         return chapterList
@@ -139,22 +137,20 @@ class ManhwaLatino :
     override fun chapterFromElement(
         element: Element,
     ): SChapter {
-
         val chapter = SChapter.create()
 
         with(element) {
-
             selectFirst(chapterUrlSelector)!!.let { urlElement ->
 
                 chapter.url =
                     urlElement.attr("abs:href")
                         .substringBefore("?style=paged")
                         .let {
-
-                            if (!it.endsWith(chapterUrlSuffix))
+                            if (!it.endsWith(chapterUrlSuffix)) {
                                 it + chapterUrlSuffix
-                            else
+                            } else {
                                 it
+                            }
                         }
 
                 chapter.name =
@@ -180,19 +176,18 @@ class ManhwaLatino :
     /**
      * Forzar headers reales tipo navegador
      */
-    override fun headersBuilder() =
-        super.headersBuilder()
-            .add(
-                "Referer",
-                "$baseUrl/",
-            )
-            .add(
-                "Upgrade-Insecure-Requests",
-                "1",
-            )
-            .add(
-                "Accept",
-                "text/html,application/xhtml+xml",
-            )
+    override fun headersBuilder() = super.headersBuilder()
+        .add(
+            "Referer",
+            "$baseUrl/",
+        )
+        .add(
+            "Upgrade-Insecure-Requests",
+            "1",
+        )
+        .add(
+            "Accept",
+            "text/html,application/xhtml+xml",
+        )
 
 }
