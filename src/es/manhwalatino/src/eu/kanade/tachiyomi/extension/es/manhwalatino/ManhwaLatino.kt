@@ -189,5 +189,4 @@ class ManhwaLatino :
             "Accept",
             "text/html,application/xhtml+xml",
         )
-
 }
