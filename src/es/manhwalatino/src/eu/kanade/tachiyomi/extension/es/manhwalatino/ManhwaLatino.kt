@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.extension.es.manhwalatino
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
+import eu.kanade.tachiyomi.multisrc.madara.Madara.LoadMoreStrategy
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.interceptor.rateLimitHost
 import eu.kanade.tachiyomi.source.model.SChapter
@@ -61,7 +62,7 @@ class ManhwaLatino :
      */
     override val useNewChapterEndpoint = true
 
-    override val useLoadMoreRequest = true
+    override val useLoadMoreRequest = LoadMoreStrategy.NEXT_PAGE
 
     /**
      * Selectores específicos del sitio
