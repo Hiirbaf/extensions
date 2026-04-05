@@ -30,7 +30,6 @@ class ManhwaLatino :
             1,
             3,
         )
-
         .addInterceptor { chain ->
 
             val request = chain.request()
@@ -49,13 +48,12 @@ class ManhwaLatino :
 
                 throw Exception(
                     "Cloudflare bloqueó el acceso.\n\n" +
-                    "Abrí el manga en WebView y resolvé el CAPTCHA.",
+                        "Abrí el manga en WebView y resolvé el CAPTCHA.",
                 )
             }
 
             response
         }
-
         .build()
 
     /**
@@ -86,7 +84,6 @@ class ManhwaLatino :
         "div.pagination > span.current + span"
 
     override fun chapterListParse(response: Response): List<SChapter> {
-
         val mangaUrl = response.request.url
         var document = response.asJsoup()
 
@@ -95,7 +92,6 @@ class ManhwaLatino :
         var page = 1
 
         do {
-
             val chapterElements =
                 document.select(chapterListSelector())
 
@@ -113,7 +109,6 @@ class ManhwaLatino :
                 ).isNotEmpty()
 
             if (hasNextPage) {
-
                 page++
 
                 val nextPageUrl =
