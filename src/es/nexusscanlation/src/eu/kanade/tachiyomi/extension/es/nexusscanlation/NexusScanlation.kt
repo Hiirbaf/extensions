@@ -74,13 +74,16 @@ class NexusScanlation : HttpSource() {
     // ========================= Search ==========================
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
+        if (query.isNotBlank()) {
+            val url = "$apiUrl/catalog/search".toHttpUrl().newBuilder()
+                .addQueryParameter("q", query)
+                .build()
+            return GET(url, headers)
+        }
+
         val urlBuilder = "$apiUrl/catalog".toHttpUrl().newBuilder()
             .addQueryParameter("page", page.toString())
             .addQueryParameter("limit", ITEMS_PER_PAGE.toString())
-
-        if (query.isNotBlank()) {
-            urlBuilder.addQueryParameter("search", query)
-        }
 
         filters.forEach { filter ->
             when (filter) {
