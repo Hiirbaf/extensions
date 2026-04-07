@@ -158,7 +158,9 @@ class NexusScanlation : HttpSource() {
 
             // Build description: main description + alt titles
             val desc = serie["descripcion"]?.jsonPrimitive?.contentOrNull
-            val altTitles = serie["titulos_alt"]?.jsonArray
+            val altTitles = serie["titulos_alt"]
+                ?.takeIf { it !is JsonNull }
+                ?.jsonArray
                 ?.mapNotNull { it.jsonPrimitive.contentOrNull }
                 ?.takeIf { it.isNotEmpty() }
                 ?.joinToString(", ")
@@ -197,7 +199,7 @@ class NexusScanlation : HttpSource() {
             serie["tipo"]?.jsonPrimitive?.contentOrNull
                 ?.replaceFirstChar { it.uppercase() }
                 ?.let { genres.add(it) }
-            serie["generos"]?.jsonArray?.forEach { g ->
+            serie["generos"]?.takeIf { it !is JsonNull }?.jsonArray?.forEach { g ->
                 val name = when {
                     g is JsonObject -> g["nombre"]?.jsonPrimitive?.contentOrNull
                     else -> g.jsonPrimitive.contentOrNull
