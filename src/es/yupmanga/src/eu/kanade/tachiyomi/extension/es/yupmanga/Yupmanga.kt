@@ -148,18 +148,26 @@ class Yupmanga : HttpSource() {
     private fun getChapterUrl(el: Element): String {
         val chapterId = el.selectFirst("a[data-chapter]")!!.attr("data-chapter")
         val totalPages = el.selectFirst("span")!!.text()
-        return "/ajax/get_reader_token.php?chapter=$chapterId#$totalPages"
+        // Guardamos chapterId y totalPages en la URL
+        return "/reader/$chapterId?totalPages=$totalPages"
+    }
+
+    override fun pageListRequest(chapter: SChapter): Request {
+        val httpUrl = (baseUrl + chapter.url).toHttpUrl()
+        val chapterId = httpUrl.pathSegments.last()
+        return GET("$baseUrl/ajax/get_reader_token.php?chapter=$chapterId", headers)
     }
 
     override fun pageListParse(response: Response): List<Page> {
         val httpUrl = response.request.url
-        val chapterId = httpUrl.queryParameter("chapter")!!
+        val chapterId = httpUrl.queryParameter("chapter") ?: httpUrl.pathSegments.last()
+        val totalPages = httpUrl.queryParameter("totalPages")?.toInt()
+            ?: throw Exception("No se encontró totalPages en el capítulo.")
 
         val token = response.parseAs<TokenDto>()
-        if (!token.success || chapterId.isNullOrEmpty()) {
+        if (!token.success || chapterId.isEmpty()) {
             throw Exception("Información desactualizada. Refresque la lista de capítulos.")
         }
-        val totalPages = httpUrl.fragment!!.toInt()
 
         return (1..totalPages).map { pageNumber ->
             val imageUrl = "$baseUrl/image-proxy-v2.php".toHttpUrl().newBuilder()
