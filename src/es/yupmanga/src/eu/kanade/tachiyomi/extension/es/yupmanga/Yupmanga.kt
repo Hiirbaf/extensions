@@ -120,7 +120,7 @@ class Yupmanga : HttpSource() {
         var page = 1
         do {
             chapterListDto = if (page == 1) {
-                response.parseAs() 
+                response.parseAs()
             } else {
                 client.newCall(paginatedChapterListRequest(mangaId, page)).execute().parseAs()
             }
@@ -158,7 +158,7 @@ class Yupmanga : HttpSource() {
             "$baseUrl/ajax/get_reader_token.php?chapter=$chapterId",
             headersBuilder()
                 .add("Referer", chapterPageUrl)
-                .build()
+                .build(),
         )
     }
 
