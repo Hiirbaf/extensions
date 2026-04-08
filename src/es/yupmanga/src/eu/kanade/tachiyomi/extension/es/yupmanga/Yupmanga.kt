@@ -119,8 +119,11 @@ class Yupmanga : HttpSource() {
 
         var page = 1
         do {
-            chapterListDto = if (page == 1) response.parseAs() 
-            else client.newCall(paginatedChapterListRequest(mangaId, page)).execute().parseAs()
+            chapterListDto = if (page == 1) {
+                response.parseAs() 
+            } else {
+                client.newCall(paginatedChapterListRequest(mangaId, page)).execute().parseAs()
+            }
 
             val doc = Jsoup.parseBodyFragment(chapterListDto.html, baseUrl)
             allChapters.addAll(parseChapterList(doc))
@@ -151,9 +154,12 @@ class Yupmanga : HttpSource() {
         client.newCall(GET(chapterPageUrl, headers)).execute()
 
         // Después pedimos el token con Referer correcto
-        return GET("$baseUrl/ajax/get_reader_token.php?chapter=$chapterId", headersBuilder()
-            .add("Referer", chapterPageUrl)
-            .build())
+        return GET(
+            "$baseUrl/ajax/get_reader_token.php?chapter=$chapterId",
+            headersBuilder()
+                .add("Referer", chapterPageUrl)
+                .build()
+        )
     }
 
     override fun pageListParse(response: Response): List<Page> {
