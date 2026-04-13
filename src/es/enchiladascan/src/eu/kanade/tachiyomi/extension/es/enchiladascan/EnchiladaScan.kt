@@ -15,6 +15,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.Jsoup
+import rx.Observable
 
 class EnchiladaScan : HttpSource() {
 
@@ -42,23 +43,17 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Search ------------------
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = popularMangaRequest(page)
-
-    override fun searchMangaParse(response: Response): MangasPage {
-        val all = popularMangaParse(response).mangas
-        // query is not accessible here, workaround: filter is done in fetchSearchManga override
-        return MangasPage(all, false)
-    }
-
     // fetchSearchManga override to apply client-side filtering
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): MangasPage {
-        val response = client.newCall(popularMangaRequest(page)).execute()
-        val all = popularMangaParse(response).mangas
-        val filtered = all.filter {
-            it.title.contains(query, ignoreCase = true) ||
-                it.description.orEmpty().contains(query, ignoreCase = true)
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
+        return Observable.fromCallable {
+            val response = client.newCall(popularMangaRequest(page)).execute()
+            val all = popularMangaParse(response).mangas
+            val filtered = all.filter {
+                it.title.contains(query, ignoreCase = true) ||
+                    it.description.orEmpty().contains(query, ignoreCase = true)
+            }
+            MangasPage(filtered, false)
         }
-        return MangasPage(filtered, false)
     }
 
     // ------------------ Manga details ------------------
