@@ -91,9 +91,7 @@ class EnchiladaScan : HttpSource() {
                         ?.removePrefix("Cap. ")
                         ?.toFloatOrNull()
                         ?: 0f
-                    url = el.attr("href").removePrefix(baseUrl).also {
-                        println("DEBUG chapter.url: $it | parts: ${it.trim('/').split('/')}")
-                    }
+                    url = el.attr("abs:href").removePrefix(baseUrl)
                 }
             }
         }
