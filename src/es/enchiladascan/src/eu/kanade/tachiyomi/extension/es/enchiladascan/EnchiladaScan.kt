@@ -63,9 +63,14 @@ class EnchiladaScan : HttpSource() {
     override fun mangaDetailsRequest(manga: SManga): Request = GET(baseUrl + manga.url, headers)
 
     override fun mangaDetailsParse(response: Response): SManga {
-        // Details are already populated from catalog; return as-is
+        // El sitio es estático, los detalles vienen del catálogo.
+        // Devolvemos un SManga con la url correcta; los campos
+        // se preservan porque Mihon hace merge con el objeto existente.
+        val url = response.request.url.toString().removePrefix(baseUrl)
         return SManga.create().apply {
-            url = response.request.url.toString().removePrefix(baseUrl)
+            this.url = url
+            // Forzar initialized para que Mihon no sobreescriba con vacío
+            initialized = true
         }
     }
 
@@ -86,7 +91,9 @@ class EnchiladaScan : HttpSource() {
                         ?.removePrefix("Cap. ")
                         ?.toFloatOrNull()
                         ?: 0f
-                    url = el.attr("href").removePrefix(baseUrl)
+                    url = el.attr("href").removePrefix(baseUrl).also {
+                        println("DEBUG chapter.url: $it | parts: ${it.trim('/').split('/')}")
+                    }
                 }
             }
         }
@@ -101,10 +108,16 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Page list ------------------
 
     override fun pageListRequest(chapter: SChapter): Request {
-        val parts = chapter.url.trim('/').split('/')
+        // Preservar la URL completa tal como viene del chapterListParse
+        // y armar el path del JSON correctamente
+        val cleanUrl = chapter.url.trim('/')
+        val parts = cleanUrl.split('/')
         require(parts.size >= 2) { "URL de capítulo inválida: ${chapter.url}" }
-        val (mangaSlug, capSlug) = parts
-        return GET("$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json", headers)
+        // Tomar solo los dos primeros segmentos relevantes
+        val mangaSlug = parts[0]
+        val capSlug = parts[1]
+        val jsonUrl = "$baseUrl/assets/mangas/$mangaSlug/$capSlug/images.json"
+        return GET(jsonUrl, headers)
     }
 
     override fun pageListParse(response: Response): List<Page> {
