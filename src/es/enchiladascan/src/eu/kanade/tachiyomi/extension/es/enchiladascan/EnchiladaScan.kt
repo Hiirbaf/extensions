@@ -58,18 +58,20 @@ class EnchiladaScan : HttpSource() {
 
     override fun searchMangaParse(response: Response): MangasPage {
         val all = popularMangaParse(response).mangas
-        val filtered = if (searchQuery.isBlank()) all else all.filter {
-            it.title.contains(searchQuery, ignoreCase = true)
-        }
+        val filtered = if (searchQuery.isBlank()) {
+            all
+        } else {
+            all.filter {
+                it.title.contains(searchQuery, ignoreCase = true)
+            }
         return MangasPage(filtered, false)
     }
 
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> =
-        Observable.fromCallable {
-            searchQuery = query
-            val response = client.newCall(searchMangaRequest(page, query, filters)).execute()
-            searchMangaParse(response)
-        }
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = Observable.fromCallable {
+        searchQuery = query
+        val response = client.newCall(searchMangaRequest(page, query, filters)).execute()
+        searchMangaParse(response)
+    }
 
     // ------------------ Manga details ------------------
 
@@ -102,8 +104,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Chapter list ------------------
 
-    override fun chapterListRequest(manga: SManga): Request =
-        GET(baseUrl + "/" + manga.url.trimStart('/'), headers)
+    override fun chapterListRequest(manga: SManga): Request = GET(baseUrl + "/" + manga.url.trimStart('/'), headers)
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val doc = Jsoup.parse(response.body!!.string())
