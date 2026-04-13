@@ -8,7 +8,6 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -28,8 +27,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Popular / Latest ------------------
 
-    override fun popularMangaRequest(page: Int): Request =
-        GET("$baseUrl/catalogo.json", headers)
+    override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/catalogo.json", headers)
 
     override fun popularMangaParse(response: Response): MangasPage {
         val root = json.parseToJsonElement(response.body.string()).jsonObject
@@ -44,8 +42,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Search ------------------
 
-    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request =
-        popularMangaRequest(page)
+    override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request = popularMangaRequest(page)
 
     override fun searchMangaParse(response: Response): MangasPage {
         val all = popularMangaParse(response).mangas
@@ -66,8 +63,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Manga details ------------------
 
-    override fun mangaDetailsRequest(manga: SManga): Request =
-        GET(baseUrl + manga.url, headers)
+    override fun mangaDetailsRequest(manga: SManga): Request = GET(baseUrl + manga.url, headers)
 
     override fun mangaDetailsParse(response: Response): SManga {
         // Details are already populated from catalog; return as-is
@@ -78,8 +74,7 @@ class EnchiladaScan : HttpSource() {
 
     // ------------------ Chapter list ------------------
 
-    override fun chapterListRequest(manga: SManga): Request =
-        GET(baseUrl + manga.url, headers)
+    override fun chapterListRequest(manga: SManga): Request = GET(baseUrl + manga.url, headers)
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val doc = Jsoup.parse(response.body.string(), baseUrl)
@@ -122,8 +117,7 @@ class EnchiladaScan : HttpSource() {
         }
     }
 
-    override fun imageUrlParse(response: Response): String =
-        throw UnsupportedOperationException("Not used")
+    override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException("Not used")
 
     // ------------------ Helpers ------------------
 
