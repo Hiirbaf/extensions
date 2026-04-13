@@ -44,16 +44,14 @@ class EnchiladaScan : HttpSource() {
     // ------------------ Search ------------------
 
     // fetchSearchManga override to apply client-side filtering
-    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
-        return Observable.fromCallable {
-            val response = client.newCall(popularMangaRequest(page)).execute()
-            val all = popularMangaParse(response).mangas
-            val filtered = all.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                    it.description.orEmpty().contains(query, ignoreCase = true)
-            }
-            MangasPage(filtered, false)
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> = Observable.fromCallable {
+        val response = client.newCall(popularMangaRequest(page)).execute()
+        val all = popularMangaParse(response).mangas
+        val filtered = all.filter {
+            it.title.contains(query, ignoreCase = true) ||
+                it.description.orEmpty().contains(query, ignoreCase = true)
         }
+        MangasPage(filtered, false)
     }
 
     // ------------------ Manga details ------------------
