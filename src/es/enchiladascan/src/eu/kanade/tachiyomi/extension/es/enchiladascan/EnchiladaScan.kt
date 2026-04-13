@@ -64,6 +64,7 @@ class EnchiladaScan : HttpSource() {
             all.filter {
                 it.title.contains(searchQuery, ignoreCase = true)
             }
+        }
         return MangasPage(filtered, false)
     }
 
