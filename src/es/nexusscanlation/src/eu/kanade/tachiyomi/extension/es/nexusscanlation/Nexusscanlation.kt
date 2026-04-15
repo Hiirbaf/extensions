@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.extension.es.nexusscanlation
 
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
@@ -63,13 +64,25 @@ class Nexusscanlation : HttpSource() {
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val urlBuilder = apiBaseUrl.toHttpUrl().newBuilder()
 
-        if (query.isBlank()) {
-            urlBuilder.addPathSegment("catalog")
-        } else {
+        if (query.isNotBlank()) {
             urlBuilder
                 .addPathSegment("catalog")
                 .addPathSegment("search")
                 .addQueryParameter("q", query)
+        } else {
+            urlBuilder.addPathSegment("catalog")
+            filters.forEach { filter ->
+                when (filter) {
+                    is OrderFilter -> urlBuilder.addQueryParameter("orden", filter.selected())
+                    is StatusFilter -> filter.selected().takeIf { it.isNotEmpty() }
+                        ?.let { urlBuilder.addQueryParameter("estado", it) }
+                    is TypeFilter -> filter.selected().takeIf { it.isNotEmpty() }
+                        ?.let { urlBuilder.addQueryParameter("tipo", it) }
+                    is GenreFilter -> filter.selected().takeIf { it.isNotEmpty() }
+                        ?.let { urlBuilder.addQueryParameter("genero", it) }
+                    else -> {}
+                }
+            }
         }
 
         urlBuilder.addQueryParameter("page", page.toString())
@@ -184,4 +197,93 @@ class Nexusscanlation : HttpSource() {
     }
 
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
+
+    // ========================= Filters =========================
+
+    override fun getFilterList() = FilterList(
+        Filter.Header("Los filtros se ignoran al buscar por texto"),
+        OrderFilter(),
+        StatusFilter(),
+        TypeFilter(),
+        GenreFilter(),
+    )
+
+    class OrderFilter :
+        SelectFilter(
+            "Ordenar por",
+            listOf(
+                Pair("Más nuevo", "nuevo"),
+                Pair("Más popular", "popular"),
+                Pair("Alfabético", "az"),
+            ),
+        )
+
+    class StatusFilter :
+        SelectFilter(
+            "Estado",
+            listOf(
+                Pair("Todos", ""),
+                Pair("En emisión", "en_emision"),
+                Pair("Finalizado", "finalizado"),
+                Pair("Pausado", "pausado"),
+                Pair("Cancelado", "cancelado"),
+            ),
+        )
+
+    class TypeFilter :
+        SelectFilter(
+            "Tipo",
+            listOf(
+                Pair("Todos", ""),
+                Pair("Manhwa", "manhwa"),
+                Pair("Manga", "manga"),
+                Pair("Manhua", "manhua"),
+            ),
+        )
+
+    class GenreFilter :
+        SelectFilter(
+            "Género",
+            listOf(
+                Pair("Todos", ""),
+                Pair("Acción", "accion"),
+                Pair("Artes Marciales", "artes-marciales"),
+                Pair("Aventura", "aventura"),
+                Pair("Ciencia Ficción", "ciencia-ficcion"),
+                Pair("Comedia", "comedia"),
+                Pair("Deportes", "deportes"),
+                Pair("Drama", "drama"),
+                Pair("Ecchi", "ecchi"),
+                Pair("Escolar", "escolar"),
+                Pair("Fantasía", "fantasia"),
+                Pair("Harem", "harem"),
+                Pair("Histórico", "historico"),
+                Pair("Horror", "horror"),
+                Pair("Isekai", "isekai"),
+                Pair("Josei", "josei"),
+                Pair("Mecha", "mecha"),
+                Pair("Misterio", "misterio"),
+                Pair("Música", "musica"),
+                Pair("Psicológico", "psicologico"),
+                Pair("Romance", "romance"),
+                Pair("Seinen", "seinen"),
+                Pair("Shoujo", "shoujo"),
+                Pair("Shounen", "shounen"),
+                Pair("Slice of Life", "slice-of-life"),
+                Pair("Supernatural", "supernatural"),
+                Pair("Supervivencia", "supervivencia"),
+                Pair("Thriller", "thriller"),
+                Pair("Webtoon", "webtoon"),
+                Pair("Yaoi", "yaoi"),
+                Pair("Yuri", "yuri"),
+            ),
+        )
+
+    open class SelectFilter(
+        name: String,
+        private val options: List<Pair<String, String>>,
+        private val default: Int = 0,
+    ) : Filter.Select<String>(name, options.map { it.first }.toTypedArray(), default) {
+        fun selected() = options[state].second
+    }
 }
