@@ -154,6 +154,7 @@ class Yupmanga : HttpSource() {
         val chapterUrl = "$baseUrl${chapter.url}".toHttpUrl()
         val chapterId = chapterUrl.queryParameter("chapter")!!
         val seriesId = chapterUrl.queryParameter("s")
+        val totalPages = chapterUrl.fragment!!
 
         val tokenReqUrl = if (seriesId != null) {
             "$baseUrl/series.php?id=$seriesId"
@@ -199,7 +200,8 @@ class Yupmanga : HttpSource() {
             }
         }.build()
 
-        return GET(chapterTokenUrl, headers)
+        val finalUrl = chapterTokenUrl.toString() + "#$totalPages"
+        return GET(finalUrl, headers)
     }
 
     override fun pageListParse(response: Response): List<Page> {
