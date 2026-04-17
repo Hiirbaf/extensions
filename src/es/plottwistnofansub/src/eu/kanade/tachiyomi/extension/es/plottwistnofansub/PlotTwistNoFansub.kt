@@ -204,4 +204,15 @@ class PlotTwistNoFansub :
         val scriptElement = document.selectFirst("script#plotsito-js-extra")
             ?: throw Exception("Couldn't find chapters config script")
         val scriptContent = scriptElement.data
-        val match = """"chapters_action"\s*
+        val match = """"chapters_action"\s*:\s*"([^"]+)"""".toRegex().find(scriptContent)
+            ?: throw Exception("Couldn't find chapters_action in the script")
+        return match.groupValues[1] // devuelve "lcapl6" u otra acción correcta
+    }
+
+    companion object {
+        private val MANGAID1_REGEX = ""","manid":"(\d+)",""".toRegex()
+        private val UNESCAPE_REGEX = """\\(.)""".toRegex()
+        private val CHAPTER_PAGES_REGEX = """obj\s*=\s*(.*)\s*;""".toRegex()
+        private const val MAX_MANGA_RESULTS = 1000
+    }
+}
