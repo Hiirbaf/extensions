@@ -203,7 +203,7 @@ class PlotTwistNoFansub :
     private fun getKey(document: Document): String {
         val scriptElement = document.selectFirst("script#plotsito-js-extra")
             ?: throw Exception("Couldn't find chapters config script")
-        val scriptContent = scriptElement.data
+        val scriptContent = scriptElement.data()
         val match = """"chapters_action"\s*:\s*"([^"]+)"""".toRegex().find(scriptContent)
             ?: throw Exception("Couldn't find chapters_action in the script")
         return match.groupValues[1] // devuelve "lcapl6" u otra acción correcta
