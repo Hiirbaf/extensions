@@ -26,7 +26,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.ProtocolException
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
@@ -35,6 +34,7 @@ import org.jsoup.nodes.Document
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 import java.net.URLEncoder
 import java.security.MessageDigest
 
@@ -193,7 +193,7 @@ class GoogleDrive :
 
         val driveDocument = try {
             client.newCall(GET(parsed.url, headers = getHeaders)).execute().asJsoup()
-        } catch (a: ProtocolException) {
+        } catch (e: IOException) {
             null
         } ?: return manga
 
@@ -284,7 +284,7 @@ class GoogleDrive :
 
             val driveDocument = try {
                 client.newCall(GET(folderUrl, headers = getHeaders)).execute().asJsoup()
-            } catch (a: ProtocolException) {
+            } catch (e: IOException) {
                 throw Exception("Unable to get items, check webview")
             }
 
@@ -372,7 +372,7 @@ class GoogleDrive :
 
         val driveDocument = try {
             client.newCall(GET(parsed.url, headers = getHeaders)).execute().asJsoup()
-        } catch (a: ProtocolException) {
+        } catch (e: IOException) {
             throw Exception("Unable to get chapter pages, check webview")
         }
 
@@ -491,7 +491,7 @@ class GoogleDrive :
 
         val driveDocument = try {
             client.newCall(request).execute().asJsoup()
-        } catch (a: ProtocolException) {
+        } catch (e: IOException) {
             throw Exception("Unable to get items, check webview")
         }
 
