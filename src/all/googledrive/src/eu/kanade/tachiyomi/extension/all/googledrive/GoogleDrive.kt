@@ -668,7 +668,7 @@ class GoogleDrive :
         private const val SCANLATOR_ORDER_DEFAULT = false
 
         private val DRIVE_FOLDER_REGEX = Regex(
-            """(?<n>\[[^\[\];]+\])?https?:\/\/(?:docs|drive)\.google\.com\/drive(?:\/[^\/]+)*?\/folders\/(?<id>[\w-]{28,})(?:\?[^;#]+)?(?<depth>#\d+(?<range>,\d+,\d+)?)?${'$'}""",
+            """(?<name>\[[^\[\];]+\])?https?:\/\/(?:docs|drive)\.google\.com\/drive(?:\/[^\/]+)*?\/folders\/(?<id>[\w-]{28,})(?:\?[^;#]+)?(?<depth>#\d+(?<range>,\d+,\d+)?)?${'$'}""",
         )
         private val KEY_REGEX = Regex(""""(\w{39})"""")
         private val VERSION_REGEX = Regex(""""([^"]+web-frontend[^"]+)"""")
