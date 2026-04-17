@@ -159,7 +159,7 @@ class PlotTwistNoFansub :
                         val unescapedName = Entities.unescape(it.name).replaceFirstChar { it.uppercase() }
                         this.name = "Capítulo ${it.number}: $unescapedName"
                         this.url = "/reader/${it.mangaSlug}/chapter-${it.number}"
-                    }
+                    },
                 )
             }
 
