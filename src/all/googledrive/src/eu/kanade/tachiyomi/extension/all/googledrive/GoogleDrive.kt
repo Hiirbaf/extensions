@@ -29,8 +29,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
-import okhttp3.internal.commonEmptyRequestBody
 import org.jsoup.nodes.Document
+import rx.Observable
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
@@ -75,7 +75,7 @@ class GoogleDrive :
 
     // ============================== Popular ===============================
 
-    override suspend fun getPopularManga(page: Int): MangasPage = parsePage(popularMangaRequest(page), page)
+    override fun fetchPopularManga(page: Int): Observable<MangasPage> = Observable.fromCallable { parsePage(popularMangaRequest(page), page) }
 
     override fun popularMangaRequest(page: Int): Request {
         require(!baseUrlInternal.isNullOrEmpty()) { "Enter drive path(s) in extension settings." }
@@ -103,28 +103,26 @@ class GoogleDrive :
 
     override fun searchMangaParse(response: Response): MangasPage = throw UnsupportedOperationException()
 
-    override suspend fun getSearchManga(
-        page: Int,
-        query: String,
-        filters: FilterList,
-    ): MangasPage {
+    override fun fetchSearchManga(page: Int, query: String, filters: FilterList): Observable<MangasPage> {
         val filterList = if (filters.isEmpty()) getFilterList() else filters
         val urlFilter = filterList.find { it is URLFilter } as URLFilter
 
-        return if (urlFilter.state.isEmpty()) {
-            val req = searchMangaRequest(page, query, filters)
+        return Observable.fromCallable {
+            if (urlFilter.state.isEmpty()) {
+                val req = searchMangaRequest(page, query, filters)
 
-            if (query.isEmpty()) {
-                parsePage(req, page)
+                if (query.isEmpty()) {
+                    parsePage(req, page)
+                } else {
+                    val parentId = req.url.pathSegments.last()
+                    val cleanQuery = URLEncoder.encode(query, "UTF-8")
+                    val genMultiFormReq = searchReq(parentId, cleanQuery)
+
+                    parsePage(req, page, genMultiFormReq)
+                }
             } else {
-                val parentId = req.url.pathSegments.last()
-                val cleanQuery = URLEncoder.encode(query, "UTF-8")
-                val genMultiFormReq = searchReq(parentId, cleanQuery)
-
-                parsePage(req, page, genMultiFormReq)
+                addSinglePage(urlFilter.state)
             }
-        } else {
-            addSinglePage(urlFilter.state)
         }
     }
 
@@ -164,8 +162,8 @@ class GoogleDrive :
     private fun getDomains(): Array<Pair<String, String>> {
         if (preferences.domainList.isBlank()) return emptyArray()
         return preferences.domainList.split(";").map {
-            val name = DRIVE_FOLDER_REGEX.matchEntire(it)!!.groups["name"]?.let {
-                it.value.substringAfter("[").substringBeforeLast("]")
+            val name = DRIVE_FOLDER_REGEX.matchEntire(it)!!.groups["name"]?.let { g ->
+                g.value.substringAfter("[").substringBeforeLast("]")
             }
             Pair(name ?: it.toHttpUrl().encodedPath, it)
         }.toTypedArray()
@@ -184,7 +182,9 @@ class GoogleDrive :
         return GET(parsed.url, headers = getHeaders)
     }
 
-    override suspend fun getMangaDetails(manga: SManga): SManga {
+    override fun fetchMangaDetails(manga: SManga): Observable<SManga> = Observable.fromCallable { getMangaDetailsSync(manga) }
+
+    private fun getMangaDetailsSync(manga: SManga): SManga {
         val parsed = json.decodeFromString<LinkData>(manga.url)
 
         if (parsed.type == "single") return manga
@@ -224,7 +224,7 @@ class GoogleDrive :
             val newPostUrl = "https://drive.usercontent.google.com/uc?id=${it.id}&authuser=0&export=download"
 
             val newResponse = client.newCall(
-                POST(newPostUrl, headers = newPostHeaders, body = commonEmptyRequestBody),
+                POST(newPostUrl, headers = newPostHeaders, body = "".toRequestBody(null)),
             ).execute().parseAs<DownloadResponse> { JSON_REGEX.find(it)!!.groupValues[1] }
 
             val downloadHeaders = headers.newBuilder().apply {
@@ -253,7 +253,9 @@ class GoogleDrive :
 
     // ============================== Chapters ==============================
 
-    override suspend fun getChapterList(manga: SManga): List<SChapter> {
+    override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = Observable.fromCallable { getChapterListSync(manga) }
+
+    private fun getChapterListSync(manga: SManga): List<SChapter> {
         val chapterList = mutableListOf<SChapter>()
         val parsed = json.decodeFromString<LinkData>(manga.url)
 
@@ -274,7 +276,7 @@ class GoogleDrive :
             it.value.substringAfter("#").substringBefore(",").toInt()
         } ?: 2
         val (start, stop) = match.groups["range"]?.let {
-            it.value.substringAfter(",").split(",").map { it.toInt() }
+            it.value.substringAfter(",").split(",").map { s -> s.toInt() }
         } ?: listOf(null, null)
 
         fun traverseFolder(folderUrl: String, path: String, recursionDepth: Int = 0) {
@@ -303,9 +305,9 @@ class GoogleDrive :
                 }
 
                 if (parsedPage.items == null) throw Exception("Failed to load items, please log in through webview")
-                parsedPage.items.forEachIndexed { index, it ->
+                parsedPage.items.forEachIndexed { index, item ->
                     // A folder = a chapter
-                    if (it.mimeType.endsWith(".folder")) {
+                    if (item.mimeType.endsWith(".folder")) {
                         val pathName = if (preferences.trimChapterInfo) path.trimInfo() else path
 
                         if (start != null && maxRecursionDepth == 1 && counter < start) {
@@ -316,29 +318,25 @@ class GoogleDrive :
 
                         chapterList.add(
                             SChapter.create().apply {
-                                name = if (preferences.trimChapterName) it.title.trimInfo() else it.title
+                                name = if (preferences.trimChapterName) item.title.trimInfo() else item.title
                                 url = LinkData(
-                                    "https://drive.google.com/drive/folders/${it.id}",
+                                    "https://drive.google.com/drive/folders/${item.id}",
                                     "multi",
                                 ).toJsonString()
                                 chapter_number =
-                                    ITEM_NUMBER_REGEX.find(it.title.trimInfo())?.groupValues?.get(1)
+                                    ITEM_NUMBER_REGEX.find(item.title.trimInfo())?.groupValues?.get(1)
                                         ?.toFloatOrNull() ?: (index + 1).toFloat()
                                 date_upload = -1L
-                                scanlator = if (preferences.scanlatorOrder) {
-                                    "/$pathName"
-                                } else {
-                                    "/$pathName"
-                                }
+                                scanlator = "/$pathName"
                             },
                         )
                         counter++
 
-                        // Recurse into sub-folders if needed
+                        // Recurse into sub-folders for deeper structures
                         if (recursionDepth + 1 < maxRecursionDepth) {
                             traverseFolder(
-                                "https://drive.google.com/drive/folders/${it.id}",
-                                if (path.isEmpty()) it.title else "$path/${it.title}",
+                                "https://drive.google.com/drive/folders/${item.id}",
+                                if (path.isEmpty()) item.title else "$path/${item.title}",
                                 recursionDepth + 1,
                             )
                         }
@@ -358,7 +356,9 @@ class GoogleDrive :
 
     // ============================== Pages ==============================
 
-    override suspend fun getPageList(chapter: SChapter): List<Page> {
+    override fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.fromCallable { getPageListSync(chapter) }
+
+    private fun getPageListSync(chapter: SChapter): List<Page> {
         val parsed = json.decodeFromString<LinkData>(chapter.url)
 
         // Single image file
@@ -405,8 +405,6 @@ class GoogleDrive :
 
     override fun pageListParse(response: Response): List<Page> = throw UnsupportedOperationException()
 
-    override suspend fun getImageUrl(page: Page) = page.imageUrl!!
-
     override fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 
     // ============================= Utilities ==============================
@@ -442,7 +440,7 @@ class GoogleDrive :
         val key = KEY_REGEX.find(keyScript)?.groupValues?.get(1) ?: ""
 
         val versionScript = document.select("script").first { script ->
-            KEY_REGEX.find(script.data()) != null
+            VERSION_REGEX.find(script.data()) != null
         }.data()
         val driveVersion = VERSION_REGEX.find(versionScript)?.groupValues?.get(1) ?: ""
         val sapisid =
@@ -517,31 +515,31 @@ class GoogleDrive :
         }
 
         if (parsed.items == null) throw Exception("Failed to load items, please log in through webview")
-        parsed.items.forEach { it ->
+        parsed.items.forEach { item ->
             // Top-level folders = manga entries
-            if (it.mimeType.endsWith(".folder")) {
+            if (item.mimeType.endsWith(".folder")) {
                 mangaList.add(
                     SManga.create().apply {
-                        title = if (preferences.trimMangaInfo) it.title.trimInfo() else it.title
+                        title = if (preferences.trimMangaInfo) item.title.trimInfo() else item.title
                         url = LinkData(
-                            "https://drive.google.com/drive/folders/${it.id}$recurDepth",
+                            "https://drive.google.com/drive/folders/${item.id}$recurDepth",
                             "multi",
                         ).toJsonString()
                         thumbnail_url = ""
                     },
                 )
             }
-            // A lone image file at root level = single-page manga
-            if (it.mimeType.startsWith("image")) {
+            // A lone image file at root level = single-image manga
+            if (item.mimeType.startsWith("image")) {
                 mangaList.add(
                     SManga.create().apply {
-                        title = if (preferences.trimMangaInfo) it.title.trimInfo() else it.title
+                        title = if (preferences.trimMangaInfo) item.title.trimInfo() else item.title
                         url = LinkData(
-                            "https://drive.google.com/uc?id=${it.id}",
+                            "https://drive.google.com/uc?id=${item.id}",
                             "single",
                             LinkDataInfo(
-                                it.title,
-                                it.fileSize?.toLongOrNull()?.let { formatBytes(it) } ?: "",
+                                item.title,
+                                item.fileSize?.toLongOrNull()?.let { formatBytes(it) } ?: "",
                             ),
                         ).toJsonString()
                         thumbnail_url = ""
@@ -622,7 +620,12 @@ class GoogleDrive :
                     // Do nothing.
                 }
 
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                override fun onTextChanged(
+                    s: CharSequence?,
+                    start: Int,
+                    before: Int,
+                    count: Int,
+                ) {
                     // Do nothing.
                 }
 
@@ -637,9 +640,7 @@ class GoogleDrive :
                         .all(::isFolder)
 
                     editText.error = if (!isValid) {
-                        "${
-                            text.split(";").first { !isFolder(it) }
-                        } is not a valid google drive folder"
+                        "${text.split(";").first { !isFolder(it) }} is not a valid google drive folder"
                     } else {
                         null
                     }
@@ -713,8 +714,7 @@ class GoogleDrive :
 
             setOnPreferenceChangeListener { _, newValue ->
                 try {
-                    val res =
-                        preferences.edit().putString(DOMAIN_PREF_KEY, newValue as String).commit()
+                    val res = preferences.edit().putString(DOMAIN_PREF_KEY, newValue as String).commit()
                     Toast.makeText(
                         screen.context,
                         "Restart Mihon to apply changes",
