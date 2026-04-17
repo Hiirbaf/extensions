@@ -39,8 +39,8 @@ import java.net.URLEncoder
 import java.security.MessageDigest
 
 class GoogleDrive :
-    ConfigurableSource,
-    HttpSource() {
+    HttpSource(),
+    ConfigurableSource {
 
     override val name = "Google Drive"
 
@@ -171,8 +171,7 @@ class GoogleDrive :
         }.toTypedArray()
     }
 
-    private open class UriPartFilter(displayName: String, val vals: Array<Pair<String, String>>) :
-        Filter.Select<String>(displayName, vals.map { it.first }.toTypedArray()) {
+    private open class UriPartFilter(displayName: String, val vals: Array<Pair<String, String>>) : Filter.Select<String>(displayName, vals.map { it.first }.toTypedArray()) {
         fun toUriPart() = vals[state].second
     }
 
@@ -582,15 +581,13 @@ class GoogleDrive :
         return newString.trim()
     }
 
-    private fun formatBytes(bytes: Long): String {
-        return when {
-            bytes >= 1_000_000_000 -> "%.2f GB".format(bytes / 1_000_000_000.0)
-            bytes >= 1_000_000 -> "%.2f MB".format(bytes / 1_000_000.0)
-            bytes >= 1_000 -> "%.2f KB".format(bytes / 1_000.0)
-            bytes > 1 -> "$bytes bytes"
-            bytes == 1L -> "$bytes byte"
-            else -> ""
-        }
+    private fun formatBytes(bytes: Long): String = when {
+        bytes >= 1_000_000_000 -> "%.2f GB".format(bytes / 1_000_000_000.0)
+        bytes >= 1_000_000 -> "%.2f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000 -> "%.2f KB".format(bytes / 1_000.0)
+        bytes > 1 -> "$bytes bytes"
+        bytes == 1L -> "$bytes byte"
+        else -> ""
     }
 
     private fun getCookie(url: String): String {
@@ -602,9 +599,7 @@ class GoogleDrive :
         }
     }
 
-    private fun LinkData.toJsonString(): String {
-        return json.encodeToString(this)
-    }
+    private fun LinkData.toJsonString(): String = json.encodeToString(this)
 
     private fun isFolder(text: String) = DRIVE_FOLDER_REGEX matches text
 
