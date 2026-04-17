@@ -207,9 +207,18 @@ class PlotTwistNoFansub :
     private fun String.unescape(): String = UNESCAPE_REGEX.replace(this, "$1")
 
     private fun getKey(document: Document): String {
-        val customPriorityWant = listOf("custom")
-        val customPriorityJunk = listOf("bootstrap", "pagi", "reader", "jquery")
-        val customPriorityJunk2 = listOf("multilanguage-", "ad-", "td-", "bj-", "html-", "gd-")
+        // Buscamos el script inline con id="plotsito-js-extra"
+        val scriptElement = document.selectFirst("script#plotsito-js-extra")
+            ?: throw Exception("Couldn't find chapters config script")
+
+        val scriptContent = scriptElement.data
+
+        // Buscamos el valor de "chapters_action":"..."
+        val match = """"chapters_action"\s*:\s*"([^"]+)"""".toRegex().find(scriptContent)
+            ?: throw Exception("Couldn't find chapters_action in the script")
+
+        return match.groupValues[1] // devuelve, por ejemplo, "lcapl6"
+    }
 
         document.select("script[src*=\"wp-content/plugins/\"]")
             .asSequence()
