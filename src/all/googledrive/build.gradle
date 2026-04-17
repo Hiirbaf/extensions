@@ -1,0 +1,7 @@
+ext {
+    extName = 'Google Drive'
+    extClass = '.GoogleDrive'
+    extVersionCode = 1
+}
+
+apply from: "$rootDir/common.gradle"
