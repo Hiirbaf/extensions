@@ -10,6 +10,8 @@ import android.widget.Toast
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
@@ -18,8 +20,6 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
-import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.util.asJsoup
 import eu.kanade.tachiyomi.util.parseAs
 import kotlinx.serialization.encodeToString
@@ -38,7 +38,9 @@ import uy.kohesive.injekt.injectLazy
 import java.net.URLEncoder
 import java.security.MessageDigest
 
-class GoogleDrive : ConfigurableSource, HttpSource() {
+class GoogleDrive :
+    ConfigurableSource,
+    HttpSource() {
 
     override val name = "Google Drive"
 
@@ -73,8 +75,7 @@ class GoogleDrive : ConfigurableSource, HttpSource() {
 
     // ============================== Popular ===============================
 
-    override suspend fun getPopularManga(page: Int): MangasPage =
-        parsePage(popularMangaRequest(page), page)
+    override suspend fun getPopularManga(page: Int): MangasPage = parsePage(popularMangaRequest(page), page)
 
     override fun popularMangaRequest(page: Int): Request {
         require(!baseUrlInternal.isNullOrEmpty()) { "Enter drive path(s) in extension settings." }
@@ -154,10 +155,11 @@ class GoogleDrive : ConfigurableSource, HttpSource() {
         URLFilter(),
     )
 
-    private class ServerFilter(domains: Array<Pair<String, String>>) : UriPartFilter(
-        "Select drive path",
-        domains,
-    )
+    private class ServerFilter(domains: Array<Pair<String, String>>) :
+        UriPartFilter(
+            "Select drive path",
+            domains,
+        )
 
     private fun getDomains(): Array<Pair<String, String>> {
         if (preferences.domainList.isBlank()) return emptyArray()
