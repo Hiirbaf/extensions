@@ -65,7 +65,7 @@ class PlotTwistNoFansub :
             val mangaUrl = selectFirst("a")!!.attr("href")
                 .removeSuffix("/")
                 .substringBeforeLast("/")
-                .replaceFirst("/reader/", "/plotwist/manga/")
+                .replaceFirst("/reader/", "/plotwist/manga/") + "/"
             setUrlWithoutDomain(mangaUrl)
             thumbnail_url = select("img").imgAttr()
             title = select("img").attr("title")
@@ -82,13 +82,11 @@ class PlotTwistNoFansub :
 
     override fun searchMangaRequest(page: Int, query: String, filters: FilterList): Request {
         val url = "$baseUrl/wp-admin/admin-ajax.php"
-
         val body = FormBody.Builder()
             .add("action", "td_ajax_search")
             .add("td_string", query)
             .add("limit", MAX_MANGA_RESULTS.toString())
             .build()
-
         return POST(url, headers, body)
     }
 
@@ -101,11 +99,10 @@ class PlotTwistNoFansub :
     }
 
     override fun searchMangaSelector(): String = "div.td-cpt-manga"
-
     override fun searchMangaNextPageSelector(): String? = null
 
     override fun searchMangaFromElement(element: Element): SManga = SManga.create().apply {
-        setUrlWithoutDomain(element.selectFirst(".entry-title a")!!.attr("href"))
+        setUrlWithoutDomain(element.selectFirst(".entry-title a")!!.attr("href").trimEnd('/') + "/")
         title = element.selectFirst(".entry-title a")!!.text()
         thumbnail_url = element.select("span.entry-thumb").attr("style")
             .substringAfter("url(")
@@ -124,6 +121,7 @@ class PlotTwistNoFansub :
         }
     }
 
+    // Mantener el slash final para evitar CAPTCHA
     override fun getMangaUrl(manga: SManga) = "$baseUrl${manga.url.trimEnd('/')}/"
 
     override fun chapterListParse(response: Response): List<SChapter> {
@@ -137,7 +135,6 @@ class PlotTwistNoFansub :
         ) + document.select("*[data-mangaid]").map { it.attr("data-mangaid") }
 
         val mangaId = mangaIds.groupingBy { it }.eachCount().maxBy { it.value }.key
-
         val key = getKey(document)
         val url = "$baseUrl/wp-admin/admin-ajax.php"
 
@@ -152,7 +149,6 @@ class PlotTwistNoFansub :
                 .build()
 
             val result = client.newCall(POST(url, headers, body)).execute().body.string()
-
             val jsonArray = json.decodeFromString<List<ChapterDto>>(result)
 
             if (jsonArray.isEmpty()) break
@@ -163,7 +159,7 @@ class PlotTwistNoFansub :
                         val unescapedName = Entities.unescape(it.name).replaceFirstChar { it.uppercase() }
                         this.name = "Capítulo ${it.number}: $unescapedName"
                         this.url = "/reader/${it.mangaSlug}/chapter-${it.number}"
-                    },
+                    }
                 )
             }
 
@@ -174,7 +170,6 @@ class PlotTwistNoFansub :
     }
 
     override fun chapterListSelector(): String = throw UnsupportedOperationException()
-
     override fun chapterFromElement(element: Element): SChapter = throw UnsupportedOperationException()
 
     override fun pageListParse(document: Document): List<Page> {
@@ -190,7 +185,6 @@ class PlotTwistNoFansub :
     }
 
     override fun imageUrlParse(document: Document): String = throw UnsupportedOperationException()
-
     override fun getFilterList(): FilterList = FilterList(
         Filter.Header("Haga click en \"Filtrar\" para ver todos los mangas."),
     )
@@ -203,58 +197,11 @@ class PlotTwistNoFansub :
     }
 
     private fun Elements.imgAttr(): String = this.first()!!.imgAttr()
-
     private fun String.unescape(): String = UNESCAPE_REGEX.replace(this, "$1")
 
+    // NUEVO getKey usando cmrChListCfg
     private fun getKey(document: Document): String {
-        // Buscamos el script inline con id="plotsito-js-extra"
         val scriptElement = document.selectFirst("script#plotsito-js-extra")
             ?: throw Exception("Couldn't find chapters config script")
-
         val scriptContent = scriptElement.data
-
-        // Buscamos el valor de "chapters_action":"..."
-        val match = """"chapters_action"\s*:\s*"([^"]+)"""".toRegex().find(scriptContent)
-            ?: throw Exception("Couldn't find chapters_action in the script")
-
-        return match.groupValues[1] // devuelve, por ejemplo, "lcapl6"
-    }
-
-        document.select("script[src*=\"wp-content/plugins/\"]")
-            .asSequence()
-            .map { it.attr("src") }
-            .sortedWith(
-                compareBy<String> { url ->
-                    when {
-                        customPriorityWant.any { url.contains(it) } -> 0
-                        customPriorityJunk.any { url.contains(it) } -> 2
-                        customPriorityJunk2.any { url.contains(it) } -> 3
-                        else -> 1
-                    }
-                },
-            ).forEach { url ->
-                val script = client.newCall(GET(url, headers)).execute().body.string()
-                val actions = ACTION_REGEX.findAll(script)
-                    .groupBy { it.groupValues[2] }
-                    .map { it.key to it.value.size }
-                    .sortedBy { it.second }
-                    .map { it.first }
-                    .filterNot { it == "set_readed" }
-                if (actions.size > 1) {
-                    throw Exception("Couldn't find action key, found ${actions.size}")
-                } else if (actions.size == 1) {
-                    return actions[0]
-                }
-            }
-
-        throw Exception("Couldn't find action key")
-    }
-
-    companion object {
-        private val MANGAID1_REGEX = ""","manid":"(\d+)",""".toRegex()
-        private val UNESCAPE_REGEX = """\\(.)""".toRegex()
-        private val CHAPTER_PAGES_REGEX = """obj\s*=\s*(.*)\s*;""".toRegex()
-        private val ACTION_REGEX = """action:\s*?(['"])([^\r\n]+?)\1""".toRegex()
-        private const val MAX_MANGA_RESULTS = 1000
-    }
-}
+        val match = """"chapters_action"\s*
