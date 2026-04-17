@@ -124,7 +124,7 @@ class PlotTwistNoFansub :
         }
     }
 
-    override fun getMangaUrl(manga: SManga) = "$baseUrl${manga.url}"
+    override fun getMangaUrl(manga: SManga) = "$baseUrl${manga.url.trimEnd('/')}/"
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val document = response.asJsoup()
