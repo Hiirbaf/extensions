@@ -2,7 +2,6 @@ package eu.kanade.tachiyomi.extension.en.novelcrow
 
 import eu.kanade.tachiyomi.multisrc.madara.Madara
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.source.model.FilterList
 import okhttp3.Request
 
 class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
