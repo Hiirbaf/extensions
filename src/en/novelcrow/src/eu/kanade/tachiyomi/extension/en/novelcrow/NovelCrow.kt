@@ -8,10 +8,10 @@ class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
     override val useNewChapterEndpoint = true
     override val mangaSubString = "comic"
 
-    // Fuerza search via URL en lugar de AJAX
-    override val fetchSearchMangaViaAjax = false
-
     override fun popularMangaRequest(page: Int): Request = GET("$baseUrl/comic/?m_orderby=trending&page=$page", headers)
 
     override fun latestUpdatesRequest(page: Int): Request = GET("$baseUrl/comic/?m_orderby=&page=$page", headers)
+
+    // El sitio usa page-item-detail en search, no c-tabs-item__content
+    override fun searchMangaSelector() = popularMangaSelector()
 }
