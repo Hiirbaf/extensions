@@ -7,7 +7,7 @@ import okhttp3.Request
 class NovelCrow : Madara("NovelCrow", "https://novelcrow.com", "en") {
     override val useNewChapterEndpoint = true
     override val mangaSubString = "comic"
-    
+
     // Fuerza search via URL en lugar de AJAX
     override val fetchSearchMangaViaAjax = false
 
