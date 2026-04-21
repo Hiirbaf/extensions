@@ -17,6 +17,7 @@ class CatalogMetaDto(
 
 @Serializable
 class CatalogEntryDto(
+    val id: String,
     val slug: String,
     val titulo: String,
     @SerialName("portada_url")
@@ -31,6 +32,7 @@ class SeriesPayloadDto(
 
 @Serializable
 class SeriesDto(
+    val id: String,
     val slug: String,
     val titulo: String,
     @SerialName("portada_url")
