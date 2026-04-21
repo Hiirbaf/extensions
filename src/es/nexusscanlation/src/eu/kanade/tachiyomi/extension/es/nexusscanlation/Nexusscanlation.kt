@@ -25,6 +25,8 @@ class Nexusscanlation : HttpSource() {
     private val apiBaseUrl = "https://api.nexusscanlation.com/api/v1"
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT)
 
+    override val client = network.cloudflareClient
+
     override fun headersBuilder() = super.headersBuilder()
         .add("Referer", baseUrl)
 
@@ -34,6 +36,8 @@ class Nexusscanlation : HttpSource() {
         val (seriesSlug, chapterSlug) = chapter.url.split('/', limit = 2)
         return "$baseUrl/series/$seriesSlug/chapter/$chapterSlug"
     }
+
+    private fun coverUrl(id: String) = "$baseUrl/api/media/series/$id/portada.jpg"
 
     override fun popularMangaRequest(page: Int): Request {
         val url = apiBaseUrl.toHttpUrl().newBuilder()
@@ -118,7 +122,11 @@ class Nexusscanlation : HttpSource() {
             .addPathSegment(chapterSlug)
             .build()
 
-        return GET(url, headers)
+        val pageHeaders = headersBuilder()
+            .set("Referer", "$baseUrl/series/$seriesSlug/chapter/$chapterSlug")
+            .build()
+
+        return GET(url, pageHeaders)
     }
 
     override fun pageListParse(response: Response): List<Page> {
@@ -133,7 +141,7 @@ class Nexusscanlation : HttpSource() {
         return SManga.create().apply {
             url = item.slug
             title = item.titulo
-            thumbnail_url = item.portadaUrl
+            thumbnail_url = coverUrl(item.id)
         }
     }
 
@@ -150,7 +158,7 @@ class Nexusscanlation : HttpSource() {
 
     private fun seriesToManga(series: SeriesDto): SManga = SManga.create().apply {
         title = series.titulo
-        thumbnail_url = series.portadaUrl
+        thumbnail_url = coverUrl(series.id)
         description = series.descripcion
         genre = series.generos
             ?.mapNotNull { it.nombre.takeIf { name -> name.isNotBlank() } }
