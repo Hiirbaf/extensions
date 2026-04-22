@@ -200,6 +200,11 @@ class BatCave : HttpSource() {
             .removeSuffix(";")
             .parseAs<Chapters>()
 
+        // === PREFETCH: inicializar cookies/referrer para evitar 404 ===
+        val mangaDetailUrl = "$baseUrl/comic/${data.comicId}"
+        client.newCall(GET(mangaDetailUrl, headers)).execute().close()
+        // =============================================================
+
         return data.chapters.map { chap ->
             SChapter.create().apply {
                 url = "/reader/${data.comicId}/${chap.id}"
@@ -228,9 +233,8 @@ class BatCave : HttpSource() {
 
     override fun imageRequest(page: Page): Request {
         val imageHeaders = headersBuilder().apply {
-            if (!page.imageUrl!!.toHttpUrl().host.contains("batcave")) {
-                removeAll("Referer")
-            }
+            // Aseguramos que el referer sea la página del capítulo
+            add("Referer", baseUrl)
         }.build()
 
         return GET(page.imageUrl!!, imageHeaders)
