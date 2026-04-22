@@ -231,9 +231,8 @@ class BatCave : HttpSource() {
 
     override fun imageRequest(page: Page): Request {
         val imageHeaders = headersBuilder().apply {
-            if (!page.imageUrl!!.toHttpUrl().host.contains("batcave")) {
-                removeAll("Referer")
-            }
+            // Aseguramos que el referer sea la página del capítulo
+            add("Referer", baseUrl)
         }.build()
 
         return GET(page.imageUrl!!, imageHeaders)
