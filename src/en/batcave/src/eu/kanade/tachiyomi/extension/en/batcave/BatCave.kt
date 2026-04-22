@@ -202,7 +202,7 @@ class BatCave : HttpSource() {
 
         return data.chapters.map { chap ->
             SChapter.create().apply {
-                url = "/reader/${data.comicId}/${chap.id}${data.xhash}"
+                url = "/reader/${data.comicId}/${chap.id}"
                 name = chap.title
                 chapter_number = chap.number
                 date_upload = dateFormat.tryParse(chap.date)
