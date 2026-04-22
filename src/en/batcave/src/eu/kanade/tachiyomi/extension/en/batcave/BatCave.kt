@@ -205,7 +205,7 @@ class BatCave : HttpSource() {
 
         return data.chapters.map { chap ->
             SChapter.create().apply {
-                url = "/reader/${data.comicId}/${chap.id}${data.xhash}"
+                url = "/reader/${data.comicId}/${chap.id}"
                 name = chap.title
                 chapter_number = chap.number
                 date_upload = dateFormat.tryParse(chap.date)
@@ -231,7 +231,9 @@ class BatCave : HttpSource() {
 
     override fun imageRequest(page: Page): Request {
         val imageHeaders = headersBuilder().apply {
-            add("Referer", baseUrl)
+            if (!page.imageUrl!!.toHttpUrl().host.contains("batcave")) {
+                removeAll("Referer")
+            }
         }.build()
 
         return GET(page.imageUrl!!, imageHeaders)
