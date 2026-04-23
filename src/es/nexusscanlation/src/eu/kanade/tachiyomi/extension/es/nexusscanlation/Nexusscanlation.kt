@@ -115,6 +115,11 @@ class Nexusscanlation : HttpSource() {
     override fun pageListRequest(chapter: SChapter): Request {
         val (seriesSlug, chapterSlug) = chapter.url.split('/', limit = 2)
 
+        // Forzar resolución del desafío CF en el dominio de la API
+        client.newCall(
+            GET(apiBaseUrl, headers)
+        ).execute().close()
+
         val url = apiBaseUrl.toHttpUrl().newBuilder()
             .addPathSegment("series")
             .addPathSegment(seriesSlug)
