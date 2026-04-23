@@ -117,7 +117,7 @@ class Nexusscanlation : HttpSource() {
 
         // Forzar resolución del desafío CF en el dominio de la API
         client.newCall(
-            GET(apiBaseUrl, headers)
+            GET(apiBaseUrl, headers),
         ).execute().close()
 
         val url = apiBaseUrl.toHttpUrl().newBuilder()
