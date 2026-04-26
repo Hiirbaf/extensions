@@ -138,29 +138,32 @@ class ShadowManga :
     // ----------------- CHAPTERS -----------------
     override fun chapterListRequest(manga: SManga): Request {
         val id = manga.url.split("/").last()
-        return GET("$baseUrl/api/serie/local/$id/capitulos", headers)
+        return GET("$baseUrl/api/series-locales/$id", headers)
     }
 
     override fun chapterListParse(response: okhttp3.Response): List<SChapter> {
-        val body = response.body!!.string()
-        val jsonArray = JSONObject("{\"data\":$body}").getJSONArray("data")
+        val json = JSONObject(response.body!!.string())
+        val jsonArray = json.getJSONArray("capitulos")
         val chapters = mutableListOf<SChapter>()
         for (i in 0 until jsonArray.length()) {
-            val item = jsonArray.getJSONObject(i)
-            chapters.add(parseChapter(item))
+            chapters.add(parseChapter(jsonArray.getJSONObject(i), json.getInt("id")))
         }
-        return chapters
+        return chapters.reversed()
     }
 
-    private fun parseChapter(item: JSONObject): SChapter {
+    private fun parseChapter(item: JSONObject, serieId: Int): SChapter {
         val chapter = SChapter.create()
-        chapter.name = item.getString("titulo")
-        chapter.url = "/reader/local/${item.getInt("idSerie")}/capitulos/${item.getInt("id")}/paginas"
-        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS", Locale.ENGLISH)
-        chapter.date_upload = sdf.parse(item.optString("fechaActualizacion"))?.time ?: 0
+        val numero = item.getDouble("numeroCapitulo")
+        val titulo = item.optString("titulo", "")
+        chapter.name = if (titulo.isNotEmpty()) "Cap. $numero - $titulo" else "Cap. $numero"
+        chapter.chapter_number = numero.toFloat()
+        chapter.url = "/reader/local/$serieId/capitulos/${item.getInt("id")}/paginas"
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH)
+        chapter.date_upload = sdf.parse(
+            item.optString("fechaSubida").substringBefore(".")
+        )?.time ?: 0
         return chapter
     }
-
     // ----------------- PAGES -----------------
     override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl${chapter.url}", headers)
 
