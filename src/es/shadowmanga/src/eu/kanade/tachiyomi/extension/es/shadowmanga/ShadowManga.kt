@@ -115,9 +115,9 @@ class ShadowManga :
     }
 
     override fun mangaDetailsRequest(manga: SManga): Request {
-    val id = manga.url.split("/").last()
-    return GET("$baseUrl/api/series-locales/$id", headers)
-}
+        val id = manga.url.split("/").last()
+        return GET("$baseUrl/api/series-locales/$id", headers)
+    }
 
     override fun mangaDetailsParse(response: okhttp3.Response): SManga {
         val manga = SManga.create()
