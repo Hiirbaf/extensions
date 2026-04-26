@@ -111,6 +111,7 @@ class ShadowManga :
         manga.title = item.getString("titulo")
         manga.url = "/serie/local/${item.getInt("id")}"
         manga.thumbnail_url = item.optString("portadaUrl")
+            .replace(Regex("/mangas/([^/]+)/([^/]+)/portada\\.webp"), "/portadas/$1/$2.jpg")
         return manga
     }
 
@@ -127,6 +128,8 @@ class ShadowManga :
         manga.author = json.optString("autor")
         manga.thumbnail_url = json.optString("portadaUrl")
         manga.genre = json.optString("generos")
+            .split(",")
+            .joinToString(", ") { it.trim() }
         manga.status = when (json.optString("estado")) {
             "Completado" -> SManga.COMPLETED
             "En curso" -> SManga.ONGOING
@@ -160,10 +163,11 @@ class ShadowManga :
         chapter.url = "/reader/local/$serieId/capitulos/${item.getInt("id")}/paginas"
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH)
         chapter.date_upload = sdf.parse(
-            item.optString("fechaSubida").substringBefore(".")
+            item.optString("fechaSubida").substringBefore("."),
         )?.time ?: 0
         return chapter
     }
+
     // ----------------- PAGES -----------------
     override fun pageListRequest(chapter: SChapter): Request = GET("$baseUrl${chapter.url}", headers)
 
