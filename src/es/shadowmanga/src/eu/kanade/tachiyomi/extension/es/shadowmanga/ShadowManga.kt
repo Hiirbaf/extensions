@@ -114,17 +114,24 @@ class ShadowManga :
         return manga
     }
 
+    override fun mangaDetailsRequest(manga: SManga): Request {
+    val id = manga.url.split("/").last()
+    return GET("$baseUrl/api/series-locales/$id", headers)
+}
+
     override fun mangaDetailsParse(response: okhttp3.Response): SManga {
         val manga = SManga.create()
         val json = JSONObject(response.body!!.string())
+        manga.title = json.optString("titulo")
+        manga.description = json.optString("descripcion")
         manga.author = json.optString("autor")
-        manga.genre = json.optJSONArray("generos")?.join(", ")
+        manga.thumbnail_url = json.optString("portadaUrl")
+        manga.genre = json.optString("generos")
         manga.status = when (json.optString("estado")) {
             "Completado" -> SManga.COMPLETED
             "En curso" -> SManga.ONGOING
             else -> SManga.UNKNOWN
         }
-        manga.description = ""
         return manga
     }
 
