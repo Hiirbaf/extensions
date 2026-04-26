@@ -109,7 +109,7 @@ class ShadowManga :
     private fun parseManga(item: JSONObject): SManga {
         val manga = SManga.create()
         manga.title = item.getString("titulo")
-        manga.url = "/series-locales/${item.getInt("id")}"
+        manga.url = "/serie/local/${item.getInt("id")}"
         manga.thumbnail_url = item.optString("portadaUrl")
         return manga
     }
@@ -131,7 +131,7 @@ class ShadowManga :
     // ----------------- CHAPTERS -----------------
     override fun chapterListRequest(manga: SManga): Request {
         val id = manga.url.split("/").last()
-        return GET("$baseUrl/api/series-locales/$id/capitulos", headers)
+        return GET("$baseUrl/api/serie/local/$id/capitulos", headers)
     }
 
     override fun chapterListParse(response: okhttp3.Response): List<SChapter> {
@@ -148,7 +148,7 @@ class ShadowManga :
     private fun parseChapter(item: JSONObject): SChapter {
         val chapter = SChapter.create()
         chapter.name = item.getString("titulo")
-        chapter.url = "/series-locales/${item.getInt("idSerie")}/capitulos/${item.getInt("id")}/paginas"
+        chapter.url = "/reader/local/${item.getInt("idSerie")}/capitulos/${item.getInt("id")}/paginas"
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS", Locale.ENGLISH)
         chapter.date_upload = sdf.parse(item.optString("fechaActualizacion"))?.time ?: 0
         return chapter
