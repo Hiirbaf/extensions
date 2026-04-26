@@ -160,7 +160,7 @@ class ShadowManga :
         val titulo = item.optString("titulo", "")
         chapter.name = if (titulo.isNotEmpty()) "Cap. $numero - $titulo" else "Cap. $numero"
         chapter.chapter_number = numero.toFloat()
-        chapter.url = "/reader/local/$serieId/capitulos/${item.getInt("id")}/paginas"
+        chapter.url = "/api/series-locales/capitulo/${item.getInt("id")}/paginas"
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ENGLISH)
         chapter.date_upload = sdf.parse(
             item.optString("fechaSubida").substringBefore("."),
