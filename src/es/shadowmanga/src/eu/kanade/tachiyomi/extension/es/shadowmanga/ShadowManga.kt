@@ -32,7 +32,25 @@ class ShadowManga :
     override val baseUrl = "https://shadowmanga.es"
     override val lang = "es"
     override val supportsLatest = true
-    override val client: OkHttpClient = network.client
+
+    override val client: OkHttpClient = network.client.newBuilder()
+        .addInterceptor { chain ->
+            val request = chain.request()
+            val response = chain.proceed(request)
+            if (response.code == 404 && request.url.host == "media.shadowmanga.es") {
+                response.close()
+                val url = request.url.toString()
+                val fallback = if (url.contains("/mangas/")) {
+                    url.replace(Regex("/mangas/([^/]+)/([^/]+)/portada\\.webp"), "/portadas/$1/$2.jpg")
+                } else {
+                    url.replace(Regex("/portadas/([^/]+)/([^/]+)\\.jpg"), "/mangas/$1/$2/portada.webp")
+                }
+                chain.proceed(request.newBuilder().url(fallback).build())
+            } else {
+                response
+            }
+        }
+        .build()
 
     override fun setupPreferenceScreen(screen: androidx.preference.PreferenceScreen) {}
 
@@ -82,7 +100,7 @@ class ShadowManga :
 
     override fun searchMangaParse(response: okhttp3.Response): MangasPage = parseMangasResponse(response)
 
-    private fun parseMangasResponse(response: okhttp3.Response, isSearch: Boolean = false): MangasPage {
+    private fun parseMangasResponse(response: okhttp3.Response): MangasPage {
         val body = response.body!!.string()
         val jsonArray = org.json.JSONArray(body)
         val mangasMap = linkedMapOf<String, SManga>()
@@ -111,7 +129,6 @@ class ShadowManga :
         manga.title = item.getString("titulo")
         manga.url = "/serie/local/${item.getInt("id")}"
         manga.thumbnail_url = item.optString("portadaUrl")
-            .replace(Regex("/mangas/([^/]+)/([^/]+)/portada\\.webp"), "/portadas/$1/$2.jpg")
         return manga
     }
 
@@ -149,12 +166,12 @@ class ShadowManga :
         val jsonArray = json.getJSONArray("capitulos")
         val chapters = mutableListOf<SChapter>()
         for (i in 0 until jsonArray.length()) {
-            chapters.add(parseChapter(jsonArray.getJSONObject(i), json.getInt("id")))
+            chapters.add(parseChapter(jsonArray.getJSONObject(i)))
         }
         return chapters.reversed()
     }
 
-    private fun parseChapter(item: JSONObject, serieId: Int): SChapter {
+    private fun parseChapter(item: JSONObject): SChapter {
         val chapter = SChapter.create()
         val numero = item.getDouble("numeroCapitulo")
         val titulo = item.optString("titulo", "")
