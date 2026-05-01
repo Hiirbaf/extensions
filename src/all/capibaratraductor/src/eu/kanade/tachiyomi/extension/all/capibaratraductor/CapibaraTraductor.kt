@@ -10,10 +10,20 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
+import org.jsoup.Jsoup
 import uy.kohesive.injekt.injectLazy
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -93,14 +103,11 @@ class CapibaraTraductor(
 
     // ── Manga details ─────────────────────────────────────────────────────────
 
-    // url stored as: /orgSlug/manga/mangaSlug::mangaCustomId
-    // e.g. /senshimanga/manga/blue-lock::96
-
+    // url: /$orgSlug/manga/$mangaSlug::$mangaCustomId
     override fun mangaDetailsRequest(manga: SManga): Request {
         val (_, mangaCustomId) = manga.url.parseUrl()
         val url = "$baseUrl/api/manga-custom".toHttpUrl().newBuilder()
-            .addQueryParameter("id", mangaCustomId)
-            .addQueryParameter("organizationSlug", orgSlug)
+            .addQueryParameter("ids", mangaCustomId)
             .build()
         return GET(url, headers)
     }
@@ -112,28 +119,98 @@ class CapibaraTraductor(
 
     // ── Chapter list ──────────────────────────────────────────────────────────
 
+    // All chapters are embedded in the manga HTML page as Astro island props.
     override fun chapterListRequest(manga: SManga): Request {
-        val (mangaSlug, mangaCustomId) = manga.url.parseUrl()
-        val url = "$baseUrl/api/manga-custom/$mangaSlug/chapters".toHttpUrl().newBuilder()
-            .addQueryParameter("limit", "500")
-            .addQueryParameter("organizationSlug", orgSlug)
-            .build()
-        return GET(url, headers)
+        val (mangaSlug, _) = manga.url.parseUrl()
+        return GET("$baseUrl/$orgSlug/manga/$mangaSlug", headersBuilder().build())
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
-        val result = response.parseAs<ChapterListResponse>()
-        return result.data.items.map { it.toSChapter(response.request.url.pathSegments[3]) }
-            .sortedByDescending { it.chapter_number }
+        val html = response.body.string()
+        val doc = Jsoup.parse(html)
+
+        val island = doc.select("astro-island[component-url*='MangaDetailPageContainer']").first()
+            ?: throw Exception("No se encontró el contenedor del manga")
+
+        val propsRaw = island.attr("props")
+        val props = json.parseToJsonElement(propsRaw).jsonObject
+
+        val mangaSlug = response.request.url.pathSegments.last()
+
+        // props["manga"] is an Astro-encoded [0, {...}] pair where the object has "chapters"
+        val mangaObj = decodeAstro(props["manga"]!!).jsonObject
+        val chaptersEncoded = mangaObj["chapters"]
+            ?: throw Exception("No se encontraron capítulos en los props")
+
+        val chaptersArray = decodeAstro(chaptersEncoded).jsonArray
+
+        return chaptersArray.mapNotNull { el ->
+            runCatching {
+                val ch = decodeAstro(el).jsonObject
+                val number = decodeAstro(ch["number"]!!).jsonPrimitive.double
+                val title = decodeAstro(ch["title"]!!).jsonPrimitive.content
+                val releasedAtEl = ch["releasedAt"]?.let { decodeAstro(it) }
+                val releasedAt = if (releasedAtEl == null || releasedAtEl is JsonNull) null
+                else releasedAtEl.jsonPrimitive.content
+
+                SChapter.create().apply {
+                    url = "/$orgSlug/manga/$mangaSlug/chapters/$number"
+                    name = title.ifBlank { "Capítulo $number" }
+                    chapter_number = number.toFloat()
+                    date_upload = runCatching {
+                        releasedAt?.let { dateFormat.parse(it)?.time } ?: 0L
+                    }.getOrDefault(0L)
+                }
+            }.getOrNull()
+        }.sortedByDescending { it.chapter_number }
+    }
+
+    /**
+     * Decode Astro's serialized prop format: [typeTag, value]
+     * 0 = primitive or plain object
+     * 1 = array
+     */
+    private fun decodeAstro(element: JsonElement): JsonElement {
+        if (element !is JsonArray || element.size < 2) return element
+        return when (element[0].jsonPrimitive.int) {
+            0 -> {
+                val v = element[1]
+                when {
+                    v is JsonPrimitive || v is JsonNull -> v
+                    else -> {
+                        // Object — recursively decode each value
+                        val obj = v.jsonObject
+                        val sb = StringBuilder("{")
+                        obj.entries.forEachIndexed { i, (k, child) ->
+                            if (i > 0) sb.append(',')
+                            sb.append('"').append(k.replace("\"", "\\\"")).append('"')
+                            sb.append(':').append(decodeAstro(child))
+                        }
+                        sb.append('}')
+                        json.parseToJsonElement(sb.toString())
+                    }
+                }
+            }
+            1 -> {
+                val arr = element[1].jsonArray
+                val sb = StringBuilder("[")
+                arr.forEachIndexed { i, child ->
+                    if (i > 0) sb.append(',')
+                    sb.append(decodeAstro(child))
+                }
+                sb.append(']')
+                json.parseToJsonElement(sb.toString())
+            }
+            else -> element[1]
+        }
     }
 
     // ── Pages ─────────────────────────────────────────────────────────────────
 
-    // chapter url: /orgSlug/manga/mangaSlug/chapters/chapterNumber
+    // chapter.url = /$orgSlug/manga/$mangaSlug/chapters/$chapterNumber
     override fun pageListRequest(chapter: SChapter): Request {
-        // chapter.url = /orgSlug/manga/mangaSlug/chapters/chapterNumber
         val parts = chapter.url.trimStart('/').split('/')
-        // parts: [orgSlug, manga, mangaSlug, chapters, chapterNumber]
+        // [orgSlug, manga, mangaSlug, chapters, chapterNumber]
         val mangaSlug = parts[2]
         val chapterNumber = parts[4]
         return GET(
@@ -158,9 +235,7 @@ class CapibaraTraductor(
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun MangaCustomItem.toSManga() = SManga.create().apply {
-        // url encodes both slug and id separated by ::
-        val slug = manga.slug
-        url = "/$orgSlug/manga/$slug::$id"
+        url = "/$orgSlug/manga/${manga.slug}::$id"
         title = this@toSManga.title
         thumbnail_url = imageUrl
         description = this@toSManga.description
@@ -175,23 +250,14 @@ class CapibaraTraductor(
         initialized = true
     }
 
-    private fun ChapterItem.toSChapter(mangaSlug: String) = SChapter.create().apply {
-        url = "/$orgSlug/manga/$mangaSlug/chapters/$number"
-        name = title.ifBlank { "Capítulo $number" }
-        chapter_number = number.toFloat()
-        date_upload = runCatching {
-            dateFormat.parse(releasedAt)?.time ?: 0L
-        }.getOrDefault(0L)
-    }
-
     private fun String.parseUrl(): Pair<String, String> {
-        // url format: /orgSlug/manga/mangaSlug::mangaCustomId
-        val path = trimStart('/').split('/').last() // "mangaSlug::mangaCustomId"
-        val (slug, id) = path.split("::")
+        val last = trimStart('/').split('/').last()
+        val (slug, id) = last.split("::")
         return slug to id
     }
 
-    private inline fun <reified T> Response.parseAs(): T = json.decodeFromString(body.string())
+    private inline fun <reified T> Response.parseAs(): T =
+        json.decodeFromString(body.string())
 
     companion object {
         private const val PAGE_SIZE = 20
@@ -221,7 +287,6 @@ data class MangaCustomItem(
     val manga: MangaBase,
     val organization: OrganizationInfo,
     val genres: List<GenreItem> = emptyList(),
-    val chapters: List<ChapterItem> = emptyList(),
 )
 
 @Serializable
@@ -243,25 +308,6 @@ data class GenreItem(
     val id: Int,
     val slug: String,
     val name: String,
-)
-
-@Serializable
-data class ChapterListResponse(
-    val status: Boolean,
-    val data: ChapterListData,
-)
-
-@Serializable
-data class ChapterListData(
-    val items: List<ChapterItem>,
-)
-
-@Serializable
-data class ChapterItem(
-    val id: Int,
-    val number: Double,
-    val title: String = "",
-    val releasedAt: String = "",
 )
 
 @Serializable
