@@ -191,8 +191,7 @@ class CapibaraTraductor(
         return slug to id
     }
 
-    private inline fun <reified T> Response.parseAs(): T =
-        json.decodeFromString(body.string())
+    private inline fun <reified T> Response.parseAs(): T = json.decodeFromString(body.string())
 
     companion object {
         private const val PAGE_SIZE = 20
