@@ -137,23 +137,29 @@ class CapibaraTraductor(
 
         val mangaSlug = response.request.url.pathSegments.last()
 
-        // props["manga"] is an Astro-encoded [0, {...}] pair where the object has "chapters"
-        val mangaObj = decodeAstro(props["manga"]!!).jsonObject
-        val chaptersEncoded = mangaObj["chapters"]
+        // Astro encodes props as {"key": [typeTag, value]}
+        // props["manga"] = [0, {mangaObj}], inside mangaObj["chapters"] = [1, [[0,{ch}],...]]
+        val mangaRaw = props["manga"]?.jsonArray?.get(1)?.jsonObject
+
+        // chapters may be at root or inside manga object
+        val chaptersEncoded = props["chapters"]
+            ?: mangaRaw?.get("chapters")
             ?: throw Exception("No se encontraron capítulos en los props")
 
-        val chaptersArray = decodeAstro(chaptersEncoded).jsonArray
+        // chaptersEncoded = [1, [ [0,{ch1}], [0,{ch2}], ... ]]
+        val chaptersArray = chaptersEncoded.jsonArray[1].jsonArray
 
         return chaptersArray.mapNotNull { el ->
             runCatching {
-                val ch = decodeAstro(el).jsonObject
-                val number = decodeAstro(ch["number"]!!).jsonPrimitive.double
-                val title = decodeAstro(ch["title"]!!).jsonPrimitive.content
-                val releasedAtEl = ch["releasedAt"]?.let { decodeAstro(it) }
-                val releasedAt = if (releasedAtEl == null || releasedAtEl is JsonNull) {
+                // el = [0, {chapterObj}] where each field is also [typeTag, value]
+                val ch = el.jsonArray[1].jsonObject
+                val number = ch["number"]!!.jsonArray[1].jsonPrimitive.double
+                val title = ch["title"]!!.jsonArray[1].jsonPrimitive.content
+                val releasedAtRaw = ch["releasedAt"]?.jsonArray?.get(1)
+                val releasedAt = if (releasedAtRaw == null || releasedAtRaw is JsonNull) {
                     null
                 } else {
-                    releasedAtEl.jsonPrimitive.content
+                    releasedAtRaw.jsonPrimitive.content
                 }
 
                 SChapter.create().apply {
