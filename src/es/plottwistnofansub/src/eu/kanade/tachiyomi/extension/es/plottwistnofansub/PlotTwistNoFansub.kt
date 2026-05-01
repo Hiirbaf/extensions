@@ -42,7 +42,7 @@ class PlotTwistNoFansub : HttpSource() {
     // ============================== Popular ===============================
     override fun popularMangaRequest(page: Int): Request {
         val url = baseUrl.toHttpUrl().newBuilder().apply {
-            addPathSegment("biblioteca2")
+            addPathSegment("biblioteca3")
             if (page > 1) {
                 addPathSegment("page")
                 addPathSegment(page.toString())
@@ -73,7 +73,7 @@ class PlotTwistNoFansub : HttpSource() {
     // =============================== Latest ===============================
     override fun latestUpdatesRequest(page: Int): Request {
         val url = baseUrl.toHttpUrl().newBuilder().apply {
-            addPathSegment("biblioteca2")
+            addPathSegment("biblioteca3")
             if (page > 1) {
                 addPathSegment("page")
                 addPathSegment(page.toString())
@@ -97,7 +97,7 @@ class PlotTwistNoFansub : HttpSource() {
             url.addQueryParameter("s", query)
             url.addQueryParameter("post_type", "wp-manga")
         } else {
-            url.addPathSegment("biblioteca2")
+            url.addPathSegment("biblioteca3")
             if (page > 1) {
                 url.addPathSegment("page")
                 url.addPathSegment(page.toString())
