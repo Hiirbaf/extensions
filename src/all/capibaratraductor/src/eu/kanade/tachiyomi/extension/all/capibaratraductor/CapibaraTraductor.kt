@@ -150,8 +150,11 @@ class CapibaraTraductor(
                 val number = decodeAstro(ch["number"]!!).jsonPrimitive.double
                 val title = decodeAstro(ch["title"]!!).jsonPrimitive.content
                 val releasedAtEl = ch["releasedAt"]?.let { decodeAstro(it) }
-                val releasedAt = if (releasedAtEl == null || releasedAtEl is JsonNull) null
-                else releasedAtEl.jsonPrimitive.content
+                val releasedAt = if (releasedAtEl == null || releasedAtEl is JsonNull) {
+                    null
+                } else {
+                    releasedAtEl.jsonPrimitive.content
+                }
 
                 SChapter.create().apply {
                     url = "/$orgSlug/manga/$mangaSlug/chapters/$number"
@@ -256,8 +259,7 @@ class CapibaraTraductor(
         return slug to id
     }
 
-    private inline fun <reified T> Response.parseAs(): T =
-        json.decodeFromString(body.string())
+    private inline fun <reified T> Response.parseAs(): T = json.decodeFromString(body.string())
 
     companion object {
         private const val PAGE_SIZE = 20
