@@ -48,7 +48,7 @@ class HDoujin(
     override val name = "HDoujin"
 
     override val id: Long = when (lang) {
-        "ko" -> 1528745830L
+        "ko" -> 9007165605477226632L
         else -> super.id
     }
 
