@@ -44,7 +44,12 @@ class CapibaraTraductor(
     // ── Headers ──────────────────────────────────────────────────────────────
 
     override fun headersBuilder(): Headers.Builder = super.headersBuilder()
-        .apply { orgSlug?.let { add("X-Organization", it); add("Referer", "$baseUrl/$it/") } }
+        .apply {
+            orgSlug?.let {
+                add("X-Organization", it)
+                add("Referer", "$baseUrl/$it/")
+            }
+        }
 
     // ── Popular ──────────────────────────────────────────────────────────────
 
