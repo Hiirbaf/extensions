@@ -30,7 +30,7 @@ import java.util.Locale
 
 class CapibaraTraductor(
     override val name: String,
-    private val orgSlug: String,
+    private val orgSlug: String? = null,
 ) : HttpSource() {
 
     override val baseUrl = "https://capibaratraductor.com"
@@ -44,12 +44,7 @@ class CapibaraTraductor(
     // ── Headers ──────────────────────────────────────────────────────────────
 
     override fun headersBuilder(): Headers.Builder = super.headersBuilder()
-        .add("X-Organization", orgSlug)
-        .add("Referer", "$baseUrl/$orgSlug/")
-
-    private fun pageHeaders(mangaSlug: String, chapterNumber: String) = headersBuilder()
-        .set("Referer", "$baseUrl/$orgSlug/manga/$mangaSlug/chapters/$chapterNumber?page=1")
-        .build()
+        .apply { orgSlug?.let { add("X-Organization", it); add("Referer", "$baseUrl/$it/") } }
 
     // ── Popular ──────────────────────────────────────────────────────────────
 
@@ -59,7 +54,7 @@ class CapibaraTraductor(
             .addQueryParameter("limit", PAGE_SIZE.toString())
             .addQueryParameter("offset", ((page - 1) * PAGE_SIZE).toString())
             .addQueryParameter("nsfw", "false")
-            .addQueryParameter("organizationSlug", orgSlug)
+            .apply { orgSlug?.let { addQueryParameter("organizationSlug", it) } }
             .build()
         return GET(url, headers)
     }
@@ -79,7 +74,7 @@ class CapibaraTraductor(
             .addQueryParameter("limit", PAGE_SIZE.toString())
             .addQueryParameter("offset", ((page - 1) * PAGE_SIZE).toString())
             .addQueryParameter("nsfw", "false")
-            .addQueryParameter("organizationSlug", orgSlug)
+            .apply { orgSlug?.let { addQueryParameter("organizationSlug", it) } }
             .build()
         return GET(url, headers)
     }
@@ -94,7 +89,7 @@ class CapibaraTraductor(
             .addQueryParameter("limit", PAGE_SIZE.toString())
             .addQueryParameter("offset", ((page - 1) * PAGE_SIZE).toString())
             .addQueryParameter("nsfw", "false")
-            .addQueryParameter("organizationSlug", orgSlug)
+            .apply { orgSlug?.let { addQueryParameter("organizationSlug", it) } }
             .build()
         return GET(url, headers)
     }
@@ -121,8 +116,11 @@ class CapibaraTraductor(
 
     // All chapters are embedded in the manga HTML page as Astro island props.
     override fun chapterListRequest(manga: SManga): Request {
-        val (mangaSlug, _) = manga.url.parseUrl()
-        return GET("$baseUrl/$orgSlug/manga/$mangaSlug", headersBuilder().build())
+        val (realOrgSlug, mangaSlug, _) = manga.url.parseUrlFull()
+        return GET(
+            "$baseUrl/$realOrgSlug/manga/$mangaSlug",
+            headersBuilder().apply { set("X-Organization", realOrgSlug) }.build(),
+        )
     }
 
     override fun chapterListParse(response: Response): List<SChapter> {
@@ -135,7 +133,10 @@ class CapibaraTraductor(
         val propsRaw = island.attr("props")
         val props = json.parseToJsonElement(propsRaw).jsonObject
 
-        val mangaSlug = response.request.url.pathSegments.last()
+        // URL: /{orgSlug}/manga/{mangaSlug} — extract both
+        val urlSegments = response.request.url.pathSegments
+        val realOrgSlug = urlSegments[0]
+        val mangaSlug = urlSegments.last()
 
         // Astro encodes props as {"key": [typeTag, value]}
         // props["manga"] = [0, {mangaObj}], inside mangaObj["chapters"] = [1, [[0,{ch}],...]]
@@ -163,7 +164,7 @@ class CapibaraTraductor(
                 }
 
                 SChapter.create().apply {
-                    url = "/$orgSlug/manga/$mangaSlug/chapters/$number"
+                    url = "/$realOrgSlug/manga/$mangaSlug/chapters/$number"
                     name = title.ifBlank { "Capítulo $number" }
                     chapter_number = number.toFloat()
                     date_upload = runCatching {
@@ -220,11 +221,15 @@ class CapibaraTraductor(
     override fun pageListRequest(chapter: SChapter): Request {
         val parts = chapter.url.trimStart('/').split('/')
         // [orgSlug, manga, mangaSlug, chapters, chapterNumber]
+        val realOrgSlug = parts[0]
         val mangaSlug = parts[2]
         val chapterNumber = parts[4]
         return GET(
             "$baseUrl/api/manga-custom/$mangaSlug/chapter/$chapterNumber/pages",
-            pageHeaders(mangaSlug, chapterNumber),
+            headersBuilder()
+                .set("X-Organization", realOrgSlug)
+                .set("Referer", "$baseUrl/$realOrgSlug/manga/$mangaSlug/chapters/$chapterNumber?page=1")
+                .build(),
         )
     }
 
@@ -244,7 +249,8 @@ class CapibaraTraductor(
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun MangaCustomItem.toSManga() = SManga.create().apply {
-        url = "/$orgSlug/manga/${manga.slug}::$id"
+        // Always store the real org slug from the API, so the hub source works correctly
+        url = "/${organization.slug}/manga/${manga.slug}::$id"
         title = this@toSManga.title
         thumbnail_url = imageUrl
         description = this@toSManga.description
@@ -259,10 +265,19 @@ class CapibaraTraductor(
         initialized = true
     }
 
+    // url = /{orgSlug}/manga/{mangaSlug}::{id}
     private fun String.parseUrl(): Pair<String, String> {
         val last = trimStart('/').split('/').last()
         val (slug, id) = last.split("::")
         return slug to id
+    }
+
+    private fun String.parseUrlFull(): Triple<String, String, String> {
+        val parts = trimStart('/').split('/')
+        // parts: [orgSlug, manga, mangaSlug::id]
+        val realOrgSlug = parts[0]
+        val (mangaSlug, id) = parts[2].split("::")
+        return Triple(realOrgSlug, mangaSlug, id)
     }
 
     private inline fun <reified T> Response.parseAs(): T = json.decodeFromString(body.string())
