@@ -44,14 +44,11 @@ class CapibaraTraductor :
     private fun SChapter.orgSlug() = url.substringBefore("/")
     private fun SChapter.chapterUrl() = url.substringAfter("/") // "{seriesSlug}/{number}"
 
-    override fun getMangaUrl(manga: SManga) =
-        "$baseUrl/${manga.orgSlug()}/manga/${manga.mangaSlug()}"
+    override fun getMangaUrl(manga: SManga) = "$baseUrl/${manga.orgSlug()}/manga/${manga.mangaSlug()}"
 
-    override fun mangaDetailsRequest(manga: SManga): Request =
-        GET("$apiBaseUrl/api/manga-custom/${manga.mangaSlug()}", orgHeaders(manga.orgSlug()))
+    override fun mangaDetailsRequest(manga: SManga): Request = GET("$apiBaseUrl/api/manga-custom/${manga.mangaSlug()}", orgHeaders(manga.orgSlug()))
 
-    override fun chapterListRequest(manga: SManga): Request =
-        mangaDetailsRequest(manga)
+    override fun chapterListRequest(manga: SManga): Request = mangaDetailsRequest(manga)
 
     override fun chapterListParse(response: Response): List<SChapter> {
         val orgSlug = response.request.headers["x-organization"] ?: return super.chapterListParse(response)
