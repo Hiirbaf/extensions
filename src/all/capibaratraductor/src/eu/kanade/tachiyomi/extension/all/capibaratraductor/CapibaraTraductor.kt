@@ -1,17 +1,15 @@
 package eu.kanade.tachiyomi.extension.all.capibaratraductor
 
+import eu.kanade.tachiyomi.multisrc.lectormoe.Data
 import eu.kanade.tachiyomi.multisrc.lectormoe.LectorMoe
+import eu.kanade.tachiyomi.multisrc.lectormoe.SeriesListDataDto
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import keiyoushi.utils.parseAs
 import okhttp3.Request
 import okhttp3.Response
-import uy.kohesive.injekt.injectLazy
 
 class CapibaraTraductor :
     LectorMoe(
@@ -20,35 +18,21 @@ class CapibaraTraductor :
         lang = "es",
     ) {
     private val apiBase = "https://capibaratraductor.com"
-    private val json: Json by injectLazy()
 
     private fun orgHeaders(orgSlug: String) = headersBuilder()
         .add("x-organization", orgSlug)
         .build()
 
-    // Parse the listing manually to extract organization.slug without modifying the DTO
     override fun searchMangaParse(response: Response): MangasPage {
         val page = response.request.url.queryParameter("page")!!.toInt()
-        val root = json.parseToJsonElement(response.body.string()).jsonObject
-        val data = root["data"]!!.jsonObject
-        val items = data["items"]!!.jsonArray
-        val maxPage = data["maxPage"]!!.jsonPrimitive.content.toInt()
-
-        val mangas = items.map { item ->
-            val obj = item.jsonObject
-            val orgSlug = obj["organization"]?.jsonObject?.get("slug")?.jsonPrimitive?.content ?: "unknown"
-            val mangaSlug = obj["manga"]!!.jsonObject["slug"]!!.jsonPrimitive.content
-            val title = obj["title"]!!.jsonPrimitive.content
-            val imageUrl = obj["imageUrl"]?.jsonPrimitive?.content
-
-            SManga.create().apply {
-                url = "$orgSlug/$mangaSlug"
-                this.title = title
-                thumbnail_url = imageUrl
+        val result = response.parseAs<Data<SeriesListDataDto>>()
+        val mangas = result.data.series.map { series ->
+            series.toSManga().apply {
+                val orgSlug = series.organization?.slug ?: "unknown"
+                url = "$orgSlug/$url"
             }
         }
-
-        return MangasPage(mangas, page < maxPage)
+        return MangasPage(mangas, page < result.data.maxPage)
     }
 
     private fun SManga.orgSlug() = url.substringBefore("/")
