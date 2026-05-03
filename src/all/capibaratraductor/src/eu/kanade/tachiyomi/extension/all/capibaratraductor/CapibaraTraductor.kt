@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.extension.all.capibaratraductor
 import eu.kanade.tachiyomi.multisrc.lectormoe.Data
 import eu.kanade.tachiyomi.multisrc.lectormoe.LectorMoe
 import eu.kanade.tachiyomi.multisrc.lectormoe.SeriesListDataDto
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
