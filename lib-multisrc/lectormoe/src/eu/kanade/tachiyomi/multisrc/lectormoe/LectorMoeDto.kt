@@ -21,6 +21,7 @@ class SeriesListDataDto(
 @Serializable
 class SeriesDto(
     val manga: MangaInfoDto,
+    val organization: OrganizationDto? = null,
     private val imageUrl: String? = null,
     private val title: String,
     private val status: String? = null,
@@ -48,6 +49,11 @@ class SeriesDto(
         else -> SManga.UNKNOWN
     }
 }
+
+@Serializable
+class OrganizationDto(
+    val slug: String,
+)
 
 @Serializable
 class MangaInfoDto(
