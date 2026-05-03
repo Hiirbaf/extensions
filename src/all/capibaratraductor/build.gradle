@@ -1,7 +1,9 @@
 ext {
     extName = 'CapibaraTraductor'
-    extClass = '.CapibaraTraductorFactory'
-    extVersionCode = 1
+    extClass = '.CapibaraTraductor'
+    themePkg = 'lectormoe'
+    baseUrl = 'https://capibaratraductor.com'
+    overrideVersionCode = 1
     isNsfw = false
 }
 
