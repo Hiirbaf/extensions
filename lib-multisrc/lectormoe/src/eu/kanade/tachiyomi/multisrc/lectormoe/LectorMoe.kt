@@ -21,7 +21,7 @@ abstract class LectorMoe(
     override val baseUrl: String,
     override val lang: String,
     private val organizationDomain: String = baseUrl.substringAfterLast("/"),
-    protected val apiBaseUrl: String = "https://capibaratraductor.com",
+    private val apiBaseUrl: String = "https://capibaratraductor.com",
 ) : HttpSource() {
 
     override val supportsLatest = true
