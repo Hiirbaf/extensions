@@ -24,11 +24,11 @@ class CapibaraTraductor :
         .build()
 
     override fun searchMangaParse(response: Response): MangasPage {
-        val page = response.request.url.queryParameter("page")!!.toInt()
+        val page = response.request.url.queryParameter("page")?.toIntOrNull() ?: 1
         val result = response.parseAs<Data<SeriesListDataDto>>()
         val mangas = result.data.series.map { series ->
+            val orgSlug = series.organization?.slug ?: "unknown"
             series.toSManga().apply {
-                val orgSlug = series.organization?.slug ?: "unknown"
                 url = "$orgSlug/$url"
             }
         }
