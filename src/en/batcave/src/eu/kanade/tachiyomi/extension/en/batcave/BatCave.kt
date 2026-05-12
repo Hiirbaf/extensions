@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.extension.en.batcave
 
 import android.util.Log
+import eu.kanade.tachiyomi.extension.en.batcave.WebviewInterceptor
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.source.model.Filter
@@ -29,6 +30,10 @@ class BatCave : HttpSource() {
     override val lang = "en"
     override val supportsLatest = true
     override val baseUrl = "https://batcave.biz"
+
+    override val client = network.cloudflareClient.newBuilder()
+        .addInterceptor(WebviewInterceptor(baseUrl))
+        .build()
 
     override fun headersBuilder() = super.headersBuilder()
         .add("Referer", "$baseUrl/")
@@ -227,8 +232,15 @@ class BatCave : HttpSource() {
     }
 
     override fun imageRequest(page: Page): Request {
+        val imgHost = page.imageUrl!!.toHttpUrl().host
         val imageHeaders = headersBuilder().apply {
-            if (!page.imageUrl!!.toHttpUrl().host.contains("batcave")) {
+            if (imgHost.contains("batcave")) {
+                // Copia cookies de batcave.biz al subdominio img.batcave.biz
+                val cookies = client.cookieJar
+                    .loadForRequest(baseUrl.toHttpUrl())
+                    .joinToString("; ") { "${it.name}=${it.value}" }
+                if (cookies.isNotBlank()) add("Cookie", cookies)
+            } else {
                 removeAll("Referer")
             }
         }.build()
