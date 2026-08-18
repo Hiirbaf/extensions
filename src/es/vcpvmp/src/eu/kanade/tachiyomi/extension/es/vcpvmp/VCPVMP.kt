@@ -45,7 +45,7 @@ abstract class VCPVMP : VerComics() {
                 Pair("Tetonas", "tetonas"),
             )
             "VMP" -> arrayOf(
-               Pair("Ver todos", ""),
+                Pair("Ver todos", ""),
                 Pair("Ahegao", "ahegao"),
                 Pair("Anal", "anal"),
                 Pair("Big Ass", "big-ass"),
