@@ -19,7 +19,7 @@ abstract class VCPVMP : VerComics() {
             else -> super.genreSuffix
         }
 
-    override val genres: Array<Pair<String, String>>
+    override var genres: Array<Pair<String, String>>
         get() = when (name) {
             "VCP" -> arrayOf(
                 Pair("Ver todos", ""),
@@ -69,4 +69,5 @@ abstract class VCPVMP : VerComics() {
             )
             else -> super.genres
         }
+        set(value) { /* no-op: genres se calcula dinámicamente según `name` */ }
 }
