@@ -39,13 +39,13 @@ jobs:
 
       - name: Get base branch
         run: |
-        git fetch origin main:refs/remotes/origin/main
-        echo "NX_BASE=origin/main" >> "$GITHUB_ENV"
+          git fetch origin main:refs/remotes/origin/main
+          echo "NX_BASE=origin/main" >> "$GITHUB_ENV"
 
-    - id: generate-matrices
-      name: Create output matrices
-      run: |
-        python ./.github/scripts/generate-build-matrices.py "$NX_BASE"
+      - id: generate-matrices
+        name: Create output matrices
+        run: |
+          python ./.github/scripts/generate-build-matrices.py "$NX_BASE"
 
   build:
     name: Build extensions (${{ matrix.chunk.number }})
