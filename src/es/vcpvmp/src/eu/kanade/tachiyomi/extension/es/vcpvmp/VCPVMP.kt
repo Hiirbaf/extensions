@@ -26,7 +26,7 @@ abstract class VCPVMP : VerComics() {
                 Pair("Anal", "anal"),
                 Pair("Big Ass", "big-ass"),
                 Pair("Big Breasts", "big-breasts"),
-                Pair("Big Cock", "big-cock"),
+                Pair("Big Cockk", "big-cock"),
                 Pair("Big Penis", "big-penis"),
                 Pair("Big Tits", "big-tits"),
                 Pair("Blowjob", "blowjob"),
